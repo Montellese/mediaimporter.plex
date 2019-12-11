@@ -16,6 +16,8 @@ def Initialize():
 
     plexapi.X_PLEX_PRODUCT = 'Kodi'
     plexapi.X_PLEX_VERSION = xbmc.getInfoLabel('System.BuildVersionShort')
+    plexapi.X_PLEX_DEVICE_NAME = xbmc.getInfoLabel('System.FriendlyName')
 
     plexapi.BASE_HEADERS['X-Plex-Product'] = plexapi.X_PLEX_PRODUCT
     plexapi.BASE_HEADERS['X-Plex-Version'] = plexapi.X_PLEX_VERSION
+    plexapi.BASE_HEADERS['X-Plex-Device-Name'] = plexapi.X_PLEX_DEVICE_NAME
