@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<settings version="1">
+  <section id="import" label="32010">
+    <category id="plex" label="32010">
+      <group id="1">
+        <setting id="plex.librarysections" type="list[string]" label="32020">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <delimiter>|</delimiter>
+          </constraints>
+          <control type="list" format="string">
+            <multiselect>true</multiselect>
+          </control>
+        </setting>
+      </group>
+    </category>
+  </section>
+</settings>

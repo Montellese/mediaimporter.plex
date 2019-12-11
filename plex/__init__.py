@@ -1,0 +1,21 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+#  Copyright (C) 2019 Sascha Montellese <montellese@kodi.tv>
+#
+#  SPDX-License-Identifier: GPL-2.0-or-later
+#  See LICENSES/README.md for more information.
+#
+
+from constants import *
+from server import *
+
+def Initialize():
+    import xbmc
+
+    import plexapi
+
+    plexapi.X_PLEX_PRODUCT = 'Kodi'
+    plexapi.X_PLEX_VERSION = xbmc.getInfoLabel('System.BuildVersionShort')
+
+    plexapi.BASE_HEADERS['X-Plex-Product'] = plexapi.X_PLEX_PRODUCT
+    plexapi.BASE_HEADERS['X-Plex-Version'] = plexapi.X_PLEX_VERSION
