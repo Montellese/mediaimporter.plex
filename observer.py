@@ -9,14 +9,11 @@
 import xbmc
 import xbmcmediaimport
 
+from lib.monitor import Monitor
 from lib.utils import log, mediaImport2str, mediaProvider2str
 
 import plex
 from plex.provider_observer import ProviderObserver
-
-class Monitor(xbmc.Monitor):
-    def __init__(self):
-        xbmc.Monitor.__init__(self)
 
 class PlexObserverService(xbmcmediaimport.Observer):
     def __init__(self):

@@ -14,14 +14,11 @@ import xbmc
 import xbmcaddon
 import xbmcmediaimport
 
+from lib.monitor import Monitor
 from lib.utils import log, mediaProvider2str
 
 import plex
 from plex.server import Server
-
-class Monitor(xbmc.Monitor):
-    def __init__(self):
-        xbmc.Monitor.__init__(self)
 
 class PlexServer():
     def __init__(self):
