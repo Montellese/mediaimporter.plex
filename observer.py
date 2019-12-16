@@ -14,6 +14,7 @@ from lib.utils import log, mediaImport2str, mediaProvider2str
 
 import plex
 from plex.provider_observer import ProviderObserver
+from plex.server import Server
 
 class PlexObserverService(xbmcmediaimport.Observer):
     def __init__(self):
@@ -43,10 +44,23 @@ class PlexObserverService(xbmcmediaimport.Observer):
         if not mediaProvider:
             raise ValueError('cannot add invalid media provider')
 
+        # check if we already know about the media provider
         mediaProviderId = mediaProvider.getIdentifier()
         if mediaProviderId in self._observers:
             return True
 
+        # make sure the media provider is properly configured
+        authenticated = False
+        try:
+            authenticated = Server(mediaProvider).Authenticate()
+        except:
+            pass
+
+        if not authenticated:
+            log('cannot observe provider {} because authentication failed'.format(mediaProvider2str(mediaProvider)), xbmc.LOGWARNING)
+            return False
+
+        # try to create the observer
         try:
             self._observers[mediaProviderId] = ProviderObserver(mediaProvider)
         except:
@@ -119,7 +133,12 @@ class PlexObserverService(xbmcmediaimport.Observer):
         self._addObserver(mediaProvider)
 
     def onProviderUpdated(self, mediaProvider):
-        self._addObserver(mediaProvider)
+        if not self._addObserver(mediaProvider):
+            return
+
+        # make sure the media provider is being observed
+        if mediaProvider.isActive():
+            self._startObserver(mediaProvider)
 
     def onProviderRemoved(self, mediaProvider):
         self._removeObserver(mediaProvider)
