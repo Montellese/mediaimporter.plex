@@ -383,7 +383,7 @@ class Api:
         item.setIsFolder(isFolder)
 
         # add the item's ID as a unique ID belonging to Plex
-        item.setUniqueIDs({
+        item.getVideoInfoTag().setUniqueIDs({
             PLEX_PROTOCOL: itemId
         }, PLEX_PROTOCOL)
 
