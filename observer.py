@@ -47,28 +47,10 @@ class PlexObserverService(xbmcmediaimport.Observer):
         # check if we already know about the media provider
         mediaProviderId = mediaProvider.getIdentifier()
         if mediaProviderId in self._observers:
-            return True
+            return
 
-        # make sure the media provider is properly configured
-        authenticated = False
-        try:
-            authenticated = Server(mediaProvider).Authenticate()
-        except:
-            pass
-
-        if not authenticated:
-            log('cannot observe provider {} because authentication failed'.format(mediaProvider2str(mediaProvider)), xbmc.LOGWARNING)
-            return False
-
-        # try to create the observer
-        try:
-            self._observers[mediaProviderId] = ProviderObserver(mediaProvider)
-        except:
-            log('failed to observe provider {}'.format(mediaProvider2str(mediaProvider)), xbmc.LOGWARNING)
-            return False
-
-        log('observing media provider {}'.format(mediaProvider2str(mediaProvider)))
-        return True
+        # create the observer
+        self._observers[mediaProviderId] = ProviderObserver()
 
     def _removeObserver(self, mediaProvider):
         if not mediaProvider:
@@ -79,17 +61,16 @@ class PlexObserverService(xbmcmediaimport.Observer):
             return
 
         del self._observers[mediaProviderId]
-        log('stopped observing media provider {}'.format(mediaProvider2str(mediaProvider)))
 
     def _startObserver(self, mediaProvider):
         if not mediaProvider:
             raise ValueError('cannot start invalid media provider')
 
-        mediaProviderId = mediaProvider.getIdentifier()
-        if not self._addObserver(mediaProvider):
-            return
+        # make sure the media provider has been added
+        self._addObserver(mediaProvider)
 
-        self._observers[mediaProviderId].Start()
+        # start observing the media provider
+        self._observers[mediaProvider.getIdentifier()].Start(mediaProvider)
 
     def _stopObserver(self, mediaProvider):
         if not mediaProvider:
@@ -133,12 +114,13 @@ class PlexObserverService(xbmcmediaimport.Observer):
         self._addObserver(mediaProvider)
 
     def onProviderUpdated(self, mediaProvider):
-        if not self._addObserver(mediaProvider):
-            return
+        self._addObserver(mediaProvider)
 
         # make sure the media provider is being observed
         if mediaProvider.isActive():
             self._startObserver(mediaProvider)
+        else:
+            self._stopObserver(mediaProvider)
 
     def onProviderRemoved(self, mediaProvider):
         self._removeObserver(mediaProvider)
