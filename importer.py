@@ -188,13 +188,14 @@ def linkMyPlexAccount(handle, options):
     serverUrl = mediaProvider.getBasePath()
     matchingServer = None
 
+    serverId = getServerId(mediaProvider.getIdentifier())
+
     # get all connected server resources
     serverResources = getServerResources(plexAccount)
     for server in serverResources:
-        for connection in server.connections:
-            if (connection.local and connection.httpuri == serverUrl) or connection.uri == serverUrl:
-                matchingServer = server
-                break
+        if server.clientIdentifier == serverId:
+            matchingServer = server
+            break
 
     if not matchingServer:
         log('no Plex Media Server matching {} found'.format(serverUrl), xbmc.LOGWARNING)
