@@ -197,6 +197,7 @@ def linkMyPlexAccount(handle, options):
                 break
 
     if not matchingServer:
+        log('no Plex Media Server matching {} found'.format(serverUrl), xbmc.LOGWARNING)
         xbmcgui.Dialog().ok(localise(32015), localise(32058))
         return
 
