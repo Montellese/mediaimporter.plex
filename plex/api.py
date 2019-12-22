@@ -32,6 +32,41 @@ PLEX_MEDIA_TYPES = [
 
 class Api:
     @staticmethod
+    def compareMediaProviders(lhs, rhs):
+        if not lhs or not rhs:
+            return False
+
+        if lhs.getIdentifier() != rhs.getIdentifier():
+            return False
+
+        if lhs.getBasePath() != rhs.getBasePath():
+            return False
+
+        if lhs.getFriendlyName() != rhs.getFriendlyName():
+            return False
+
+        lhsSettings = lhs.prepareSettings()
+        if not lhsSettings:
+            return False
+
+        rhsSettings = rhs.prepareSettings()
+        if not rhsSettings:
+            return False
+
+        lhsSettingsAuthentication = lhsSettings.getInt(SETTINGS_PROVIDER_AUTHENTICATION)
+        if lhsSettingsAuthentication != rhsSettings.getInt(SETTINGS_PROVIDER_AUTHENTICATION):
+            return False
+
+        if lhsSettingsAuthentication == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX:
+            if lhsSettings.getString(SETTINGS_PROVIDER_USERNAME) != rhsSettings.getString(SETTINGS_PROVIDER_USERNAME):
+                return False
+
+            if lhsSettings.getString(SETTINGS_PROVIDER_TOKEN) != rhsSettings.getString(SETTINGS_PROVIDER_TOKEN):
+                return False
+
+        return True
+
+    @staticmethod
     def getPlexMediaType(mediaType):
         if not mediaType:
             raise ValueError('invalid mediaType')
