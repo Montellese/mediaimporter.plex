@@ -130,7 +130,11 @@ def linkToMyPlexAccount():
     dialog.ok(localise(32015), localise(32053), '[COLOR FFE5A00D]{}[/COLOR]'.format(pinLogin.pin))
 
     # check the status of the authentication
-    if not pinLogin.checkLogin():
+    while not pinLogin.finished:
+        if pinLogin.checkLogin():
+            break
+
+    if pinLogin.expired:
         dialog.ok(localise(32015), localise(32054))
         log('linking the MyPlex account has expiried', xbmc.LOGWARNING)
         return None
