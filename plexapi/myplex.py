@@ -1111,7 +1111,13 @@ class MyPlexPinLogin(object):
         if self._thread:
             return False
 
-        return self._checkLogin()
+        try:
+            return self._checkLogin()
+        except Exception:
+            self.expired = True
+            self.finished = True
+
+        return False
 
     def _getPin(self):
         if self.pin:
@@ -1144,6 +1150,7 @@ class MyPlexPinLogin(object):
             return False
 
         self.token = token
+        self.finished = True
         return True
 
     def _pollLogin(self):
