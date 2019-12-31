@@ -73,11 +73,11 @@ msgid "Test connection"
 msgstr ""
 
 msgctxt "#32018"
-msgid "Successfully connected"
+msgid "Successfully connected."
 msgstr ""
 
 msgctxt "#32019"
-msgid "Connection failed"
+msgid "Connection failed!"
 msgstr ""
 
 msgctxt "#32020"
