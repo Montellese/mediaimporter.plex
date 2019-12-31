@@ -206,6 +206,8 @@ def linkMyPlexAccount(handle, options):
         xbmcgui.Dialog().ok(localise(32015), localise(32058))
         return
 
+    xbmcgui.Dialog().ok(localise(32015), localise(32059).format(username))
+
     # change the settings
     providerSettings.setString(plex.constants.SETTINGS_PROVIDER_USERNAME, username)
     providerSettings.setString(plex.constants.SETTINGS_PROVIDER_TOKEN, matchingServer.accessToken)

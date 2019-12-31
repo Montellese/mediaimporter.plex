@@ -120,3 +120,7 @@ msgstr ""
 msgctxt "#32058"
 msgid "Linking MyPlex account failed!"
 msgstr ""
+
+msgctxt "#32059"
+msgid "Successfully linked to [COLOR FFE5A00D]{}[/COLOR]'s MyPlex account."
+msgstr ""
