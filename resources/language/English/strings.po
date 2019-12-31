@@ -84,6 +84,10 @@ msgctxt "#32020"
 msgid "Library sections"
 msgstr ""
 
+msgctxt "#32021"
+msgid "Library"
+msgstr ""
+
 #. Titel of the dialog to select the authentication method
 msgctxt "#32050"
 msgid "Plex Media Server authentication method"
