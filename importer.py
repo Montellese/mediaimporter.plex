@@ -7,8 +7,7 @@
 #
 
 import sys
-import urllib
-import urlparse
+from six.moves.urllib.parse import parse_qs, unquote, urlparse
 
 import xbmc
 import xbmcgui
@@ -42,7 +41,7 @@ def getServerId(path):
     if not path:
         return False
 
-    url = urlparse.urlparse(path)
+    url = urlparse(path)
     if url.scheme != plex.constants.PLEX_PROTOCOL or not url.netloc:
         return False
 
@@ -349,7 +348,7 @@ def canImport(handle, options):
         log('cannot execute "canimport" without path')
         return
 
-    path = urllib.unquote(options['path'][0]).decode('utf8')
+    path = unquote(options['path'][0]).decode('utf8')
 
     # try to get the Plex Media Server's identifier from the path
     id = getServerId(path)
@@ -700,11 +699,11 @@ if __name__ == '__main__':
         # get the options but remove the leading ?
         params = sys.argv[2][1:]
         if params:
-            options = urlparse.parse_qs(params)
+            options = parse_qs(params)
 
     log('path = {}, handle = {}, options = {}'.format(path, handle, params), xbmc.LOGDEBUG)
 
-    url = urlparse.urlparse(path)
+    url = urlparse(path)
     action = url.path
     if action[0] == '/':
         action = action[1:]

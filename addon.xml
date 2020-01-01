@@ -3,6 +3,7 @@
     <requires>
         <import addon="xbmc.python" version="2.1.0"/>
         <import addon="script.module.requests" />
+        <import addon="script.module.six" />
         <!-- <import addon="script.module.web-pdb" /> -->
     </requires>
     <extension point="kodi.mediaimporter" protocol="Plex" discovery="discovery.py" library="importer.py" observer="observer.py">
