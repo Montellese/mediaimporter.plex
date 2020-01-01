@@ -2,7 +2,6 @@
 <addon id="mediaimporter.plex" name="Plex Media Importer" version="0.0.1" provider-name="Montellese">
     <requires>
         <import addon="xbmc.python" version="2.1.0"/>
-        <import addon="script.module.dateutil" />
         <import addon="script.module.requests" />
         <!-- <import addon="script.module.web-pdb" /> -->
     </requires>
