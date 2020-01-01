@@ -348,7 +348,7 @@ def canImport(handle, options):
         log('cannot execute "canimport" without path')
         return
 
-    path = unquote(options['path'][0]).decode('utf8')
+    path = unquote(options['path'][0])
 
     # try to get the Plex Media Server's identifier from the path
     id = getServerId(path)
