@@ -6,9 +6,6 @@
 #  See LICENSES/README.md for more information.
 #
 
-from constants import *
-from server import *
-
 def Initialize():
     import xbmc
 
