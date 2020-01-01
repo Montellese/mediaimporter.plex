@@ -34,10 +34,10 @@ class PlexServer():
 
     @staticmethod
     def fromString(data, ip):
-        Separator = ':'
-        ServerPropertyResourceIdentifier = 'Resource-Identifier'
-        ServerPropertyName = 'Name'
-        ServerPropertyPort = 'Port'
+        Separator = b':'
+        ServerPropertyResourceIdentifier = b'Resource-Identifier'
+        ServerPropertyName = b'Name'
+        ServerPropertyPort = b'Port'
 
         if not data:
             return None
@@ -57,9 +57,9 @@ class PlexServer():
 
             serverProperty, serverPropertyValue = lineParts
             if serverProperty == ServerPropertyResourceIdentifier:
-                id = serverPropertyValue
+                id = serverPropertyValue.decode('utf-8')
             elif serverProperty == ServerPropertyName:
-                name = serverPropertyValue
+                name = serverPropertyValue.decode('utf-8')
             elif serverProperty == ServerPropertyPort:
                 port = int(serverPropertyValue)
 
@@ -81,10 +81,10 @@ class PlexServer():
 class DiscoveryService:
     DiscoveryAddress = '239.0.0.250'
     DiscoveryPort = 32414
-    DiscoveryMessage = 'M-SEARCH * HTTP/1.1\r\n'
+    DiscoveryMessage = b'M-SEARCH * HTTP/1.1\r\n'
     DiscoveryTimeoutS = 1.0
     DiscoveryResponsePort = 32412
-    DiscoveryResponse = '200 OK'
+    DiscoveryResponse = b'200 OK'
 
     def __init__(self):
         self._monitor = Monitor()
