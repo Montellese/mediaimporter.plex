@@ -7,6 +7,7 @@
 #
 
 import time
+from six import iteritems
 import socket
 import struct
 
@@ -152,7 +153,7 @@ class DiscoveryService:
             log('failed to add and/or activate Plex Media Server {}'.format(mediaProvider2str(provider)))
 
     def _expireServers(self):
-        for serverId, server in self._servers.iteritems():
+        for serverId, server in iteritems(self._servers):
             if not server.isExpired(10):
                 continue
 
