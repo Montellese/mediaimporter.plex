@@ -18,7 +18,7 @@ from plex.server import Server
 
 class PlexObserverService(xbmcmediaimport.Observer):
     def __init__(self):
-        super(xbmcmediaimport.Observer, self).__init__(self)
+        super(xbmcmediaimport.Observer, self).__init__()
 
         self._monitor = Monitor()
         self._observers = {}
