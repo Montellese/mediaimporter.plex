@@ -58,7 +58,11 @@ import datetime
 #fix for datatetime.strptime returns None
 class proxydt(datetime.datetime):
     def __init__(self, *args, **kwargs):
-        super(proxydt, self).__init__(*args, **kwargs)
+        if version_info < (3,):
+            super(proxydt, self).__init__(*args, **kwargs)
+
+    def __new__(cls, *args, **kwargs):
+        return super(proxydt, cls).__new__(cls, *args, **kwargs)
 
     @classmethod
     def strptime(cls, date_string, format):
