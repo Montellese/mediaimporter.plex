@@ -273,14 +273,28 @@ def dicsoverProviderWithMyPlex(handle, options):
     else:
         isLocal = False
         localConnections = [ connection for connection in server.connections if connection.local ]
+        remoteConnections = [ connection for connection in server.connections if not connection.local and not connection.relay ]
+        remoteRelayConnections = [ connection for connection in server.connections if not connection.local and connection.relay ]
+
         if localConnections:
             # ask the user whether to use a local or remote connection
             isLocal = dialog.yesno(localise(32056), localise(32057).format(server.name))
 
         if isLocal:
             baseUrl = localConnections[0].httpuri
+        elif remoteConnections:
+            baseUrl = remoteConnections[0].uri
+        elif remoteRelayConnections:
+            baseUrl = remoteRelayConnections[0].uri
         else:
-            baseUrl = server.connections[0].uri
+            baseUrl = localConnections[0].uri
+
+        # try to connect to the server
+        try:
+            plexServer = PlexServer(baseurl=baseUrl, token=server.accessToken, timeout=plex.constants.REQUEST_TIMEOUT)
+        except:
+            dialog.ok(localise(32056), localise(32060).format(server.name, baseUrl))
+            return None
 
     if not baseUrl:
         log('failed to determine the URL to access the Plex Media Server "{}" for MyPlex account {}'.format(plexServer.friendlyName, username), xbmc.LOGWARNING)
