@@ -128,3 +128,7 @@ msgstr ""
 msgctxt "#32059"
 msgid "Successfully linked to [COLOR FFE5A00D]{}[/COLOR]'s MyPlex account."
 msgstr ""
+
+msgctxt "#32060"
+msgid "Failed to connect to Plex Media Server \"{}\" at {}."
+msgstr ""
