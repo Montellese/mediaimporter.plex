@@ -13,9 +13,9 @@
         <importsettings>importsettings.xml</importsettings>
     </extension>
     <extension point="xbmc.addon.metadata">
-        <summary lang="en">TODO</summary>
+        <summary lang="en">Import and play media items from a Plex Media Server (PMS)</summary>
         <description lang="en">Plex Media Importer allows you to import and play media libraries, for movies, tv shows and music videos, from Plex Media Server (PMS). Thus using Plex as a metadata manager (server) and Kodi as player (client). In addition playback data can be synced across multiple clients, for each user on Plex.</description>
-        <disclaimer lang="en">TODO</disclaimer>
+        <disclaimer lang="en"></disclaimer>
         <platform>all</platform>
         <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
         <forum></forum>
