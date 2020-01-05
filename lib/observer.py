@@ -139,11 +139,3 @@ class PlexObserverService(xbmcmediaimport.Observer):
 
     def onImportRemoved(self, mediaImport):
         self._removeImport(mediaImport)
-
-if __name__ == '__main__':
-    # initialize some global variables
-    plex.Initialize()
-
-    # instantiate and start the observer service
-    log('Plex Media Import observer started')
-    PlexObserverService()
