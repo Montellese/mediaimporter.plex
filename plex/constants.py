@@ -87,3 +87,8 @@ SETTINGS_PROVIDER_TEST_CONNECTION = 'plex.testconnection'
 
 # media import setting identifiers and values
 SETTINGS_IMPORT_LIBRARY_SECTIONS = 'plex.librarysections'
+
+# player states below
+PLEX_PLAYER_PLAYING = 'playing'
+PLEX_PLAYER_PAUSED = 'paused'
+PLEX_PLAYER_STOPPED = 'stopped'
