@@ -52,6 +52,10 @@ def localise(id):
     return normalizeString(__addon__.getLocalizedString(id))
 
 
+def toMilliseconds(seconds):
+    return int(seconds) * 1000
+
+
 def mediaProvider2str(mediaProvider):
     if not mediaProvider:
         raise ValueError('invalid mediaProvider')
