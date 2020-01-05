@@ -182,11 +182,3 @@ class DiscoveryService:
                 break
 
         self._sock.close()
-
-if __name__ == '__main__':
-    # initialize some global variables
-    plex.Initialize()
-
-    # instantiate and start the discovery service
-    log('Plex Media Server discoverer started')
-    DiscoveryService()
