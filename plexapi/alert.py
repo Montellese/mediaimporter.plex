@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import threading
-#TODO(Montellese): import websocket
+import websocket
 from plexapi import log
 
 
