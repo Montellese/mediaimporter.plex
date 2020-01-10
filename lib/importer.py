@@ -13,6 +13,7 @@ import xbmc
 import xbmcgui
 import xbmcmediaimport
 
+import plexapi.exceptions
 from plexapi.myplex import MyPlexAccount, MyPlexPinLogin
 from plexapi.server import PlexServer
 
@@ -618,8 +619,12 @@ def execImport(handle, options):
                 continue
 
             # get all matching items from the library section
-            plexSectionItems = section.search(libtype=plexLibType)
-            plexItems.extend(plexSectionItems)
+            try:
+                plexSectionItems = section.search(libtype=plexLibType)
+                plexItems.extend(plexSectionItems)
+            except plexapi.exceptions.BadRequest as err:
+                log('failed to retrieve {} items from {}: {}'.format(mediaType, mediaProvider2str(mediaProvider), err))
+                return
 
         # parse all items
         items = []
