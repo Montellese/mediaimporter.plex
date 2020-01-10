@@ -130,5 +130,9 @@ msgid "Successfully linked to [COLOR FFE5A00D]{}[/COLOR]'s MyPlex account."
 msgstr ""
 
 msgctxt "#32060"
-msgid "Failed to connect to Plex Media Server \"{}\" at {}."
+msgid "Failed to connect to Plex Media Server \"{}\"."
+msgstr ""
+
+msgctxt "#32061"
+msgid "Plex Media Server \"{}\" is only accessible via relay. Is that ok?"
 msgstr ""

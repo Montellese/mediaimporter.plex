@@ -280,25 +280,50 @@ def dicsoverProviderWithMyPlex(handle, options):
             # ask the user whether to use a local or remote connection
             isLocal = dialog.yesno(localise(32056), localise(32057).format(server.name))
 
+        urls = []
         if isLocal:
-            baseUrl = localConnections[0].httpuri
-        elif remoteConnections:
-            baseUrl = remoteConnections[0].uri
-        elif remoteRelayConnections:
-            baseUrl = remoteRelayConnections[0].uri
+            urls.append(localConnections[0].httpuri)
         else:
-            baseUrl = localConnections[0].uri
+            urls.extend([(conn.uri, False) for conn in remoteConnections])
+            urls.extend([(conn.uri, True) for conn in remoteRelayConnections])
+            urls.extend([(conn.uri, False) for conn in localConnections])
 
-        # try to connect to the server
-        try:
-            plexServer = PlexServer(baseurl=baseUrl, token=server.accessToken, timeout=plex.constants.REQUEST_TIMEOUT)
-        except:
-            dialog.ok(localise(32056), localise(32060).format(server.name, baseUrl))
+        baseUrl = None
+        connectViaRelay = True
+        # find a working connection / base URL
+        for (url, isRelay) in urls:
+            try:
+                # don't try to connect via relay if the user has already declined it before
+                if isRelay and not connectViaRelay:
+                    log('ignoring relay connection to the Plex Media Server "{}" at {}'.format(server.name, url), xbmc.LOGDEBUG)
+                    continue
+
+                # try to connect to the server
+                plexServer = PlexServer(baseurl=url, token=server.accessToken, timeout=plex.constants.REQUEST_TIMEOUT)
+
+                # if this is a relay ask the user if using it is ok
+                if isRelay:
+                    connectViaRelay = dialog.yesno(localise(32056), localise(32061).format(server.name))
+                    if not connectViaRelay:
+                        log('ignoring relay connection to the Plex Media Server "{}" at {}'.format(server.name, url), xbmc.LOGDEBUG)
+                        continue
+
+                baseUrl = url
+                break
+            except:
+                log('failed to connect to "{}" at {}'.format(server.name, url), xbmc.LOGDEBUG)
+                continue
+
+        if not baseUrl:
+            dialog.ok(localise(32056), localise(32060).format(server.name))
+            log('failed to connect to the Plex Media Server "{}" for MyPlex account {}'.format(server.name, username), xbmc.LOGWARNING)
             return None
 
     if not baseUrl:
-        log('failed to determine the URL to access the Plex Media Server "{}" for MyPlex account {}'.format(plexServer.friendlyName, username), xbmc.LOGWARNING)
+        log('failed to determine the URL to access the Plex Media Server "{}" for MyPlex account {}'.format(server.name, username), xbmc.LOGWARNING)
         return None
+
+    log('successfully connected to Plex Media Server "{}" for MyPlex account {} at {}'.format(server.name, username, baseUrl))
 
     providerId = plex.server.Server.BuildProviderId(server.clientIdentifier)
     providerIconUrl = plex.server.Server.BuildIconUrl(baseUrl)
