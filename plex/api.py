@@ -10,7 +10,7 @@ import xbmc
 from xbmcgui import ListItem
 import xbmcmediaimport
 
-from plexapi import video
+from plexapi import library, video
 
 from plex.constants import *
 
@@ -20,10 +20,12 @@ PLEX_LIBRARY_TYPE_MOVIE = 'movie'
 PLEX_LIBRARY_TYPE_TVSHOW = 'show'
 PLEX_LIBRARY_TYPE_SEASON = 'season'
 PLEX_LIBRARY_TYPE_EPISODE = 'episode'
+PLEX_LIBRARY_TYPE_COLLECTION = 'collection'
 
 # mapping of Kodi and Plex media types
 PLEX_MEDIA_TYPES = [
     { 'kodi': xbmcmediaimport.MediaTypeMovie, 'plex': PLEX_LIBRARY_TYPE_MOVIE, 'libtype': PLEX_LIBRARY_TYPE_MOVIE, 'label': 32002 },
+    { 'kodi': xbmcmediaimport.MediaTypeVideoCollection, 'plex': PLEX_LIBRARY_TYPE_COLLECTION, 'libtype': PLEX_LIBRARY_TYPE_COLLECTION, 'label': 32007 },
     { 'kodi': xbmcmediaimport.MediaTypeTvShow, 'plex': PLEX_LIBRARY_TYPE_TVSHOW, 'libtype': PLEX_LIBRARY_TYPE_TVSHOW, 'label': 32003 },
     { 'kodi': xbmcmediaimport.MediaTypeSeason, 'plex': PLEX_LIBRARY_TYPE_TVSHOW, 'libtype': PLEX_LIBRARY_TYPE_SEASON, 'label': 32004 },
     { 'kodi': xbmcmediaimport.MediaTypeEpisode, 'plex': PLEX_LIBRARY_TYPE_TVSHOW, 'libtype': PLEX_LIBRARY_TYPE_EPISODE, 'label': 32005 },
@@ -106,7 +108,10 @@ class Api:
         if not libraryType:
             raise ValueError('invalid libraryType')
 
-        if not isinstance(plexItem, video.Video):
+        if libraryType == PLEX_LIBRARY_TYPE_COLLECTION:
+            if not isinstance(plexItem, library.Collections):
+                return False
+        elif not isinstance(plexItem, video.Video):
             return False
 
         if not plexItem.type == libraryType:
@@ -189,6 +194,8 @@ class Api:
             return video.Season
         if libraryType == PLEX_LIBRARY_TYPE_EPISODE:
             return video.Episode
+        if libraryType == PLEX_LIBRARY_TYPE_COLLECTION:
+            return library.Collections
 
         return None
 
@@ -216,10 +223,10 @@ class Api:
         if not plexItem:
             return None
 
-        return Api.toFileItem(plexItem)
+        return Api.toFileItem(plexServer, plexItem)
 
     @staticmethod
-    def toFileItem(plexItem, mediaType=None, plexLibType=None):
+    def toFileItem(plexServer, plexItem, mediaType=None, plexLibType=None):
         # determine the matching Plex library type if possible
         checkMediaType = mediaType is not None
         if checkMediaType and not plexLibType:
@@ -256,7 +263,7 @@ class Api:
         item = ListItem(label=plexItem.title)
 
         # fill video details
-        Api.fillVideoInfos(itemId, plexItem, mediaType, item)
+        Api.fillVideoInfos(plexServer, itemId, plexItem, mediaType, item)
 
         if not item.getPath():
             log('failed to retrieve a path for {} item "{}"'.format(mediaType, item.getLabel()), xbmc.LOGWARNING)
@@ -265,13 +272,13 @@ class Api:
         return item
 
     @staticmethod
-    def fillVideoInfos(itemId, plexItem, mediaType, item):
+    def fillVideoInfos(plexServer, itemId, plexItem, mediaType, item):
         info = {
             'mediatype': mediaType,
             'path': '',
             'filenameandpath': '',
             'title': item.getLabel() or '',
-            'sorttitle': plexItem.titleSort or '',
+            'sorttitle': '',
             'originaltitle': '',
             'plot': plexItem.summary or '',
             'dateadded': Api.convertDateTimeToDbDateTime(plexItem.addedAt),
@@ -281,8 +288,8 @@ class Api:
             'userrating': 0.0,
             'mpaa': '',
             'duration': 0,
-            'playcount': plexItem.viewCount,
-            'lastplayed': Api.convertDateTimeToDbDateTime(plexItem.lastViewedAt),
+            'playcount': 0,
+            'lastplayed': '',
             'director': [],
             'writer': [],
             'genre': [],
@@ -302,6 +309,13 @@ class Api:
         media = []
         locations = []
         roles = []
+
+        if isinstance(plexItem, video.Video):
+            info.update({
+                'sorttitle': plexItem.titleSort,
+                'playcount': plexItem.viewCount,
+                'lastplayed': Api.convertDateTimeToDbDateTime(plexItem.lastViewedAt),
+            })
 
         if isinstance(plexItem, video.Movie):
             info.update({
@@ -325,6 +339,8 @@ class Api:
             collections = plexItem.collections
             media = plexItem.media
             roles = plexItem.roles
+        elif isinstance(plexItem, library.Collections):
+            isFolder = True
         elif isinstance(plexItem, video.Show):
             info.update({
                 'mpaa': plexItem.contentRating or '',
@@ -344,7 +360,7 @@ class Api:
 
             banner = plexItem.banner
             if banner:
-                artwork['banner'] = plexItem.url(banner)
+                artwork['banner'] = plexServer.url(banner, includeToken=True)
         elif isinstance(plexItem, video.Season):
             info.update({
                 'tvshowtitle': plexItem.parentTitle or '',
@@ -435,22 +451,28 @@ class Api:
         if mediaPart:
             # extract the absolute / actual path and the stream URL from the selected MediaPart
             info['path'] = mediaPart.file
-            item.setPath(plexItem.url(mediaPart.key))
+            item.setPath(plexServer.url(mediaPart.key, includeToken=True))
         elif isFolder:
             # for folders use locations for the path
             if locations:
                 info['path'] = locations[0]
-            item.setPath(plexItem.url(plexItem.key))
+            item.setPath(plexServer.url(plexItem.key, includeToken=True))
         info['filenameandpath'] = item.getPath()
 
         # set all the video infos
         item.setInfo('video', info)
 
         # handle artwork
-        poster = plexItem.thumbUrl
+        poster = None
+        fanart = None
+        if isinstance(plexItem, video.Video):
+            poster = plexItem.thumbUrl
+            fanart = plexItem.artUrl
+        elif isinstance(plexItem, library.Collections) and plexItem.thumb:
+            poster = plexServer.url(plexItem.thumb, includeToken=True)
+
         if poster:
             artwork['poster'] = poster
-        fanart = plexItem.artUrl
         if fanart:
             artwork['fanart'] = fanart
         if artwork:

@@ -51,7 +51,7 @@ def getLibrarySections(plexServer, mediaTypes):
     if not plexServer:
         raise ValueError('invalid plexServer')
     if not mediaTypes:
-        raise ValueError('invlaid mediaTypes')
+        raise ValueError('invalid mediaTypes')
 
     # get all library sections
     librarySections = []
@@ -628,7 +628,7 @@ def execImport(handle, options):
             if xbmcmediaimport.shouldCancel(handle, itemsProgress, itemsProgressTotal):
                 return
 
-            item = Api.toFileItem(plexItem, mediaType, plexLibType)
+            item = Api.toFileItem(plexServer, plexItem, mediaType, plexLibType)
             if not item:
                 continue
 
