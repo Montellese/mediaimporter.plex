@@ -134,6 +134,21 @@ class Player(xbmc.Player):
         if not self.isPlayingVideo():
             return
 
+        playingItem = self.getPlayingItem()
+        if not playingItem:
+            return
+
+        # check if the item has been imported from a media provider
+        mediaProviderId = playingItem.getMediaProviderId()
+        if not mediaProviderId:
+            return
+
+        if not mediaProviderId in self._providers:
+            log('currently playing item {} ({}) has been imported from an unknown media provider {}' \
+                .format(playingItem.getLabel(), self._file, mediaProviderId), xbmc.LOGWARNING)
+            return
+        self._mediaProvider = self._providers[mediaProviderId]
+
         videoInfoTag = self.getVideoInfoTag()
         if not videoInfoTag:
             return
@@ -148,21 +163,6 @@ class Player(xbmc.Player):
             return
 
         self._itemId = int(itemId)
-
-        # TODO improve mediaprovider and media importer detection
-        for mediaProvider in self._providers.values():
-            importedItems = xbmcmediaimport.getImportedItemsByProvider(mediaProvider)
-            matchingItems = [ importedItem for importedItem in importedItems \
-                if importedItem.getVideoInfoTag() and importedItem.getVideoInfoTag().getUniqueID(PLEX_PROTOCOL) == str(self._itemId) ]
-            if not matchingItems:
-                continue
-
-            if len(matchingItems) > 1:
-                log('multiple items imported from {} match the imported Plex item {} playing from {}' \
-                        .format(mediaProvider2str(mediaProvider), self._itemId, self._file), xbmc.LOGWARNING)
-
-            self._mediaProvider = mediaProvider
-            break
 
         if self._mediaProvider:
             # save item
