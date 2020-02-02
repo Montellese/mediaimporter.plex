@@ -61,5 +61,14 @@
         </setting>
       </group>
     </category>
+    <category id="playback" label="32062">
+      <group id="1">
+        <setting id="plex.enableexternalsubtitles" type="boolean" label="32063">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
+      </group>
+    </category>
   </section>
 </settings>
