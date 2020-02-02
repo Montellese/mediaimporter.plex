@@ -1,5 +1,5 @@
 [B]Version 0.0.4[/B]
--
+- Add support for external subtitles
 
 [B]Version 0.0.3[/B]
 - Support reporting playback progress / status to PMS

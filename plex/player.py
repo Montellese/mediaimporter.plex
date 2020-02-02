@@ -12,12 +12,17 @@ import xbmc
 import xbmcmediaimport
 
 from plex.api import Api
-from plex.constants import PLEX_PROTOCOL, PLEX_PLAYER_PLAYING, PLEX_PLAYER_PAUSED, PLEX_PLAYER_STOPPED
+from plex.constants import PLEX_PROTOCOL, PLEX_PLAYER_PLAYING, \
+        PLEX_PLAYER_PAUSED, PLEX_PLAYER_STOPPED, \
+        SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES
 from plex.server import Server
 
-from lib.utils import log, mediaProvider2str, toMilliseconds
+from lib.utils import log, mediaProvider2str, toMilliseconds, localise
 
 REPORTING_INTERVAL = 5 # seconds
+
+SUBTITLE_UNKNOWN = localise(32064)
+
 
 class Player(xbmc.Player):
     def __init__(self):
@@ -174,8 +179,48 @@ class Player(xbmc.Player):
             )
             self._duration = toMilliseconds(self.getTotalTime())
 
+            # register settings
+            settings = self._mediaProvider.prepareSettings()
+            if not settings:
+                log('failed to load settings for {} ({}) playing from {}' \
+                    .format(self._item.title, self._file, mediaProvider2str(self._mediaProvider)), xbmc.LOGWARNING)
+                self._reset()
+                return
+
+            # load external subtitles
+            if settings.getBool(SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES):
+                self._addExternalSubtitles(plexServer.PlexServer())
+
         else:
             self._reset()
+
+
+    def _addExternalSubtitles(self, plexServer):
+        '''Add external subtitles to the player'''
+        if not self._item:
+            return
+
+        # note: internal subtitles don't have a key provided by plexapi
+        external_subtitles = [sub for sub in self._item.subtitleStreams() if sub.key]
+        if external_subtitles:
+            for subtitle in external_subtitles:
+                # TODO: What to do with forced subs?
+                self.addSubtitle(
+                    plexServer.url(subtitle.key, includeToken=True),
+                    subtitle.title if subtitle.title else SUBTITLE_UNKNOWN,
+                    subtitle.language if subtitle.language else SUBTITLE_UNKNOWN,
+                    subtitle.selected
+                )
+                log('external subtitle "{}" [{}] at index {} added for "{}" ({}) from media provider {}' \
+                    .format(
+                        subtitle.title,
+                        subtitle.language,
+                        subtitle.index,
+                        self._item.title,
+                        self._file,
+                        mediaProvider2str(self._mediaProvider)
+                    )
+                )
 
 
     def _syncPlaybackState(self, state=None, playbackTime=None):

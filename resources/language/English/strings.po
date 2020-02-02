@@ -140,3 +140,15 @@ msgstr ""
 msgctxt "#32061"
 msgid "Plex Media Server \"{}\" is only accessible via relay. Is that ok?"
 msgstr ""
+
+msgctxt "#32062"
+msgid "Playback"
+msgstr ""
+
+msgctxt "#32063"
+msgid "Enable external subtitles"
+msgstr ""
+
+msgctxt "#32064"
+msgid "Unknown"
+msgstr ""
