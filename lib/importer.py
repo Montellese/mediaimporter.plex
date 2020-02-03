@@ -98,8 +98,28 @@ def discoverProviderLocally(handle, options):
     if not baseUrl:
         return None
 
-    plexServer = PlexServer(baseUrl, timeout=plex.constants.REQUEST_TIMEOUT)
-    if not plexServer:
+    token = None
+    try:
+        plexServer = PlexServer(baseUrl, timeout=plex.constants.REQUEST_TIMEOUT)
+        if not plexServer:
+            return None
+
+    except plexapi.exceptions.BadRequest as err:
+        # Local PMS might be protected with auth. In this case ask the user for the token.
+        if '(401) unauthorized' in str(err):
+            log('Failed to connect to PMS server. Server returned 401 (Unauthorized). Asking for token!', xbmc.LOGWARNING)
+            token = dialog.input(localise(32065))
+            if not token:
+                return None
+
+            try:
+                plexServer = PlexServer(baseUrl, token=token, timeout=plex.constants.REQUEST_TIMEOUT)
+                if not plexServer:
+                    return None
+            except plexapi.exceptions.BadRequest as err:
+                if '(401) unauthorized' in str(err):
+                    log('Failed to connect to PMS server. Server returned 401 (Unauthorized). Aborting!', xbmc.LOGWARNING)
+
         return None
 
     providerId = Server.BuildProviderId(plexServer.machineIdentifier)
@@ -113,6 +133,12 @@ def discoverProviderLocally(handle, options):
         return None
 
     providerSettings.setInt(plex.constants.SETTINGS_PROVIDER_AUTHENTICATION, plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL)
+    if token:
+        providerSettings.setInt(plex.constants.SETTINGS_PROVIDER_AUTHENTICATION, plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_TOKEN)
+        providerSettings.setString(plex.constants.SETTINGS_PROVIDER_TOKEN, token)
+    else:
+        providerSettings.setInt(plex.constants.SETTINGS_PROVIDER_AUTHENTICATION, plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_NOAUTH)
+
     providerSettings.save()
 
     return provider

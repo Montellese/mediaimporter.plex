@@ -142,7 +142,7 @@ class DiscoveryService:
         if not providerSettings:
             return None
 
-        providerSettings.setInt(plex.constants.SETTINGS_PROVIDER_AUTHENTICATION, plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL)
+        providerSettings.setInt(plex.constants.SETTINGS_PROVIDER_AUTHENTICATION, plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_NOAUTH)
         providerSettings.save()
 
         if xbmcmediaimport.addAndActivateProvider(provider):

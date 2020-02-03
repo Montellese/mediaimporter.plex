@@ -8,8 +8,9 @@
           <default>0</default>
           <constraints>
             <options>
-              <option label="32013">0</option>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL -->
-              <option label="32014">1</option>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX -->
+              <option label="32013">0</option>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_NOAUTH -->
+              <option label="32066">1</option>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_TOKEN -->
+              <option label="32014">2</option>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX -->
             </options>
           </constraints>
           <control type="list" format="string" />
@@ -18,7 +19,7 @@
           <level>0</level>
           <dependencies>
             <dependency type="visible">
-              <condition on="setting" setting="plex.authentication" operator="is">1</condition>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX -->
+              <condition on="setting" setting="plex.authentication" operator="is">2</condition>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX -->
             </dependency>
           </dependencies>
           <control type="button" format="action" />
@@ -31,12 +32,23 @@
           </constraints>
           <dependencies>
             <dependency type="visible">
-              <condition on="setting" setting="plex.authentication" operator="is">1</condition>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX -->
+              <condition on="setting" setting="plex.authentication" operator="is">2</condition>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX -->
             </dependency>
             <dependency type="enable">
-              <condition on="setting" setting="plex.authentication" operator="is">0</condition>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL -->
+              <condition on="setting" setting="plex.authentication" operator="is">0</condition>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_NOAUTH -->
             </dependency>
           </dependencies>
+          <control type="edit" format="string" />
+        </setting>
+        <setting id="plex.token" type="string" label="32065">
+          <level>0</level>
+          <dependencies>
+            <dependency type="visible" setting="plex.authentication" operator="is">1</dependency> <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_TOKEN -->
+          </dependencies>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
           <control type="edit" format="string" />
         </setting>
         <setting id="plex.testconnection" type="action" label="32017">
@@ -44,20 +56,12 @@
           <dependencies>
             <dependency type="enable">
               <or>
-                <condition on="setting" setting="plex.authentication" operator="is">0</condition>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL -->
-                <condition on="setting" setting="plex.token" operator="!is"></condition> 
+                <condition on="setting" setting="plex.authentication" operator="is">0</condition>  <!-- SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_NOAUTH -->
+                <condition on="setting" setting="plex.token" operator="!is"></condition>
               </or>
             </dependency>
           </dependencies>
           <control type="button" format="action" />
-        </setting>
-        <setting id="plex.token" type="string">
-          <visible>false</visible>
-          <level>4</level>
-          <default></default>
-          <constraints>
-            <allowempty>true</allowempty>
-          </constraints>
         </setting>
       </group>
     </category>

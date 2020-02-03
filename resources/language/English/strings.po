@@ -57,7 +57,7 @@ msgid "Authentication"
 msgstr ""
 
 msgctxt "#32013"
-msgid "Local only"
+msgid "Local only (No auth)"
 msgstr ""
 
 msgctxt "#32014"
@@ -151,4 +151,12 @@ msgstr ""
 
 msgctxt "#32064"
 msgid "Unknown"
+msgstr ""
+
+msgctxt "#32065"
+msgid "Plex token value"
+msgstr ""
+
+msgctxt "#32066"
+msgid "Local only (Token-based)"
 msgstr ""

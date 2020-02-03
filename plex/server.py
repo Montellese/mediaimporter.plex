@@ -6,28 +6,31 @@
 #  See LICENSES/README.md for more information.
 #
 
+import plexapi.exceptions
 from plexapi.server import PlexServer
 
 from lib.utils import Url
 from plex.constants import \
     PLEX_PROTOCOL, \
-    SETTINGS_PROVIDER_AUTHENTICATION, SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL, SETTINGS_PROVIDER_TOKEN
+    SETTINGS_PROVIDER_AUTHENTICATION, SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_NOAUTH, \
+    SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_TOKEN, SETTINGS_PROVIDER_TOKEN
 
 class Server:
     def __init__(self, provider):
         if not provider:
             raise ValueError('Invalid provider')
 
-        self._id = provider.getIdentifier()
-        self._url = provider.getBasePath()
+        self._provider = provider
+        self._id = self._provider.getIdentifier()
+        self._url = self._provider.getBasePath()
 
-        settings = provider.getSettings()
+        settings = self._provider.getSettings()
         if not settings:
             raise ValueError('Invalid provider without settings')
 
-        self._localOnly = settings.getInt(SETTINGS_PROVIDER_AUTHENTICATION) == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
+        self._localNoAuth = settings.getInt(SETTINGS_PROVIDER_AUTHENTICATION) == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_NOAUTH
         self._token = None
-        if not self._localOnly:
+        if not self._localNoAuth:
             self._token =  settings.getString(SETTINGS_PROVIDER_TOKEN)
         self._plex = None
 
@@ -35,6 +38,15 @@ class Server:
         if not self._plex:
             try:
                 self._plex = PlexServer(baseurl=self._url, token=self._token)
+
+            except plexapi.exceptions.BadRequest as err:
+                settings = self._provider.getSettings()
+                if '(401) unauthorized' in str(err) and \
+                    settings.getInt(SETTINGS_PROVIDER_AUTHENTICATION) == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_NOAUTH:
+                        # provider is using local_noauth but server returned unauthorized
+                        # change provider auth type to local_token so the user can fill the token value in the settings dialog
+                        settings.setInt(SETTINGS_PROVIDER_AUTHENTICATION, SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL_TOKEN)
+                return False
             except:
                 return False
 
