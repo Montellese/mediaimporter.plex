@@ -633,11 +633,17 @@ def execImport(handle, options):
             if xbmcmediaimport.shouldCancel(handle, itemsProgress, itemsProgressTotal):
                 return
 
-            item = Api.toFileItem(plexServer, plexItem, mediaType, plexLibType)
-            if not item:
-                continue
+            try:
+                item = Api.toFileItem(plexServer, plexItem, mediaType, plexLibType)
+                if not item:
+                    continue
 
-            items.append(item)
+                items.append(item)
+
+            except plexapi.exceptions.BadRequest as err:
+                # Api.convertDateTimeToDbDateTime may return (404) not_found for orphaned items in the library
+                log('failed to retrieve item {} with key {} from {}: {}'.format(plexItem.title, plexItem.key, mediaProvider2str(mediaProvider), err))
+                continue
 
         if items:
             log('{} {} items imported from {}'.format(len(items), mediaType, mediaProvider2str(mediaProvider)))
