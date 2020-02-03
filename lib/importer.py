@@ -231,7 +231,7 @@ def testConnection(handle, options):
         line = 32018
     xbmcgui.Dialog().ok(title, localise(line))
 
-def dicsoverProviderWithMyPlex(handle, options):
+def discoverProviderWithMyPlex(handle, options):
     plexAccount = linkToMyPlexAccount()
     if not plexAccount:
         return None
@@ -354,7 +354,7 @@ def discoverProvider(handle, options):
     if authenticationChoice == 0:  # local only
         provider = discoverProviderLocally(handle, options)
     elif authenticationChoice == 1:  # MyPlex
-        provider = dicsoverProviderWithMyPlex(handle, options)
+        provider = discoverProviderWithMyPlex(handle, options)
     else:
         return
 
