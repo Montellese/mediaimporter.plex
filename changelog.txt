@@ -1,3 +1,6 @@
+[B]Version 0.0.5[/B]
+-
+
 [B]Version 0.0.4[/B]
 - Add support for external subtitles
 
