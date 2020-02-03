@@ -91,7 +91,7 @@ def getMatchingLibrarySections(plexServer, mediaTypes, selectedLibrarySections):
 
     return [ librarySection for librarySection in librarySections if librarySection['key'] in selectedLibrarySections ]
 
-def dicsoverProviderLocally(handle, options):
+def discoverProviderLocally(handle, options):
     dialog = xbmcgui.Dialog()
 
     baseUrl = dialog.input(localise(32051))
@@ -283,7 +283,7 @@ def dicsoverProviderWithMyPlex(handle, options):
 
         urls = []
         if isLocal:
-            urls.append(localConnections[0].httpuri)
+            urls.append((localConnections[0].httpuri, False))
         else:
             urls.extend([(conn.uri, False) for conn in remoteConnections])
             urls.extend([(conn.uri, True) for conn in remoteRelayConnections])
@@ -352,7 +352,7 @@ def discoverProvider(handle, options):
     authenticationChoice = dialog.select(localise(32050), authenticationChoices)
 
     if authenticationChoice == 0:  # local only
-        provider = dicsoverProviderLocally(handle, options)
+        provider = discoverProviderLocally(handle, options)
     elif authenticationChoice == 1:  # MyPlex
         provider = dicsoverProviderWithMyPlex(handle, options)
     else:
