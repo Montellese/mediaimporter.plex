@@ -7,9 +7,8 @@
         <import addon="script.module.six" />
         <!-- <import addon="script.module.web-pdb" /> -->
     </requires>
-    <extension point="kodi.mediaimporter" protocol="Plex" discovery="discovery.py" library="importer.py" observer="observer.py">
-        <canlookupprovider>true</canlookupprovider>
-        <provideschangeset>false</provideschangeset>
+    <extension point="kodi.mediaimporter" discovery="discovery.py" library="importer.py" observer="observer.py">
+        <canlookupprovider protocol="Plex">true</canlookupprovider>
         <providersettings>providersettings.xml</providersettings>
         <importsettings>importsettings.xml</importsettings>
     </extension>

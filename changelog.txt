@@ -1,5 +1,5 @@
 [B]Version 0.0.6[/B]
--
+- adjust kodi.mediaimporter extension point to changes in Kodi
 
 [B]Version 0.0.5[/B]
 - don't abort the whole import process if a single item is broken (thanks @enen92)
