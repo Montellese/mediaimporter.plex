@@ -11,50 +11,61 @@ import threading
 import xbmc
 import xbmcmediaimport
 
+from plexapi.server import PlexServer
 from plex.api import Api
-from plex.constants import PLEX_PROTOCOL, PLEX_PLAYER_PLAYING, \
-        PLEX_PLAYER_PAUSED, PLEX_PLAYER_STOPPED, \
-        SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES
+from plex.constants import (
+    PLEX_PROTOCOL,
+    PLEX_PLAYER_PLAYING,
+    PLEX_PLAYER_PAUSED,
+    PLEX_PLAYER_STOPPED,
+    SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES
+)
 from plex.server import Server
 
-from lib.utils import log, mediaProvider2str, toMilliseconds, localise
+from lib.utils import log, mediaProvider2str, toMilliseconds, localize
 
-REPORTING_INTERVAL = 5 # seconds
+REPORTING_INTERVAL = 5  # seconds
 
-SUBTITLE_UNKNOWN = localise(32064)
+SUBTITLE_UNKNOWN = localize(32064)
 
 
 class Player(xbmc.Player):
+    """Class with customization of the xmbc Player class to handle working with Plex"""
     def __init__(self):
-        '''Initializes the player'''
+        """Initializes the player"""
         super(Player, self).__init__()
 
         self._providers = {}
         self._lock = threading.Lock()
 
-        self._state = {'playbacktime': None, 'state': None, 'lastreport': None}
+        self._state = {'playbacktime': 0, 'state': None, 'lastreport': 0}
 
+    def AddProvider(self, mediaProvider: xbmcmediaimport.MediaProvider):
+        """Adds a media provider to the player
 
-    def AddProvider(self, mediaProvider):
-        '''Adds a media provider to the player'''
+        :param mediaProvider: Media provider to add to the player
+        :type mediaProvider: :class:`xbmcmediaimport.MediaProvider`
+        """
         if not mediaProvider:
             raise ValueError('invalid mediaProvider')
 
         with self._lock:
             self._providers[mediaProvider.getIdentifier()] = mediaProvider
 
+    def RemoveProvider(self, mediaProvider: xbmcmediaimport.MediaProvider):
+        """Removes a media provider from the player
 
-    def RemoveProvider(self, mediaProvider):
-        '''Removes the associated media provider'''
+        :param mediaProvider: Media provider to remove from the player
+        :type mediaProvider: :class:`xbmcmediaimport.MediaProvider`
+        """
         if not mediaProvider:
             raise ValueError('invalid mediaProvider')
 
         with self._lock:
             del self._providers[mediaProvider.getIdentifier()]
 
-
     def Process(self):
-        '''Called from the observer thread to periodically report the state to PMS'''
+        """Report the state of the player to the Plex server, periodically called by observer thread"""
         with self._lock:
             if self.isPlaying():
                 lastreport = self._state.get('lastreport')
@@ -68,71 +79,60 @@ class Player(xbmc.Player):
                 if self._item:
                     self._syncPlaybackState(playbackTime=self._getPlayingTime())
 
-
     def onPlayBackStarted(self):
-        '''Triggered when xbmc.Player is started'''
+        """Event handler: triggered when the player is started"""
         with self._lock:
             self._reset()
             self._getPlayingFile()
 
-
     def onAVStarted(self):
-        '''Triggered when playback actually starts'''
+        """Event handler: triggered when the playback actually starts"""
         with self._lock:
             self._startPlayback()
             self._syncPlaybackState(playbackTime=self._getPlayingTime(), state=PLEX_PLAYER_PLAYING)
 
-
     def onPlayBackSeek(self, time, seekOffset):
-        '''Triggered when seeking.'''
+        """Event handler: triggered when seeking through the video"""
         with self._lock:
             self._syncPlaybackState(playbackTime=self._getPlayingTime())
-
 
     def onPlayBackSeekChapter(self, chapter):
-        '''Triggered when seeking chapters.'''
+        """Event handler: triggered when the seeking chapters"""
         with self._lock:
             self._syncPlaybackState(playbackTime=self._getPlayingTime())
 
-
     def onPlayBackPaused(self):
-        '''Triggered when playback is paused.'''
+        """Event handler: triggered when the playback is paused"""
         with self._lock:
             self._syncPlaybackState(playbackTime=self._getPlayingTime(), state=PLEX_PLAYER_PAUSED)
 
-
     def onPlayBackResumed(self):
-        '''Triggered when playback is resumed after a pause'''
+        """Event handler: triggered when the playback is resumed after a pause"""
         with self._lock:
             self._syncPlaybackState(playbackTime=self._getPlayingTime(), state=PLEX_PLAYER_PLAYING)
 
-
     def onPlayBackStopped(self):
-        '''Triggered when playback is stopped'''
+        """Event handler: triggered when playback is stopped"""
         with self._lock:
             self._playbackEnded()
-
 
     def onPlayBackEnded(self):
-        '''Triggered when playback ends. Resets the player state and inherently kills the reporting loop'''
+        """Event handler: Triggered when playback ends. Resets player state and inherently kills the reporting loop"""
         with self._lock:
             self._playbackEnded()
 
-
     def _getPlayingFile(self):
-        '''Fill the playing file in the respective member variable with a lock'''
+        """Fill the playing file in the respective member variable with a lock"""
         if self.isPlaying():
             self._file = self.getPlayingFile()
 
-
     def _playbackEnded(self):
-        '''Sends stop state to Plex and resets the player member variables'''
+        """Sends stop state to Plex and resets the player member variables"""
         self._syncPlaybackState(state=PLEX_PLAYER_STOPPED)
         self._reset()
 
-
     def _startPlayback(self):
-        '''Identifies the item (if from Plex) and initializes the player state'''
+        """Identifies the item (if from Plex) and initializes the player state"""
         if not self._file:
             return
 
@@ -149,8 +149,13 @@ class Player(xbmc.Player):
             return
 
         if not mediaProviderId in self._providers:
-            log('currently playing item {} ({}) has been imported from an unknown media provider {}' \
-                .format(playingItem.getLabel(), self._file, mediaProviderId), xbmc.LOGWARNING)
+            log(
+                (
+                    f"currently playing item {playingItem.getLabel()} ({self._file}) "
+                    f"has been imported from an unknown media provider {mediaProviderId}"
+                ),
+                xbmc.LOGWARNING
+            )
             return
         self._mediaProvider = self._providers[mediaProviderId]
 
@@ -163,8 +168,10 @@ class Player(xbmc.Player):
             return
 
         if not itemId.isdigit():
-            log('invalid item id plex://{} (non digit). Kodi will not report playback state to Plex Media Server' \
-                    .format(itemId), xbmc.LOGERROR)
+            log(
+                f"Item id is not a digit: plex://{itemId}. Kodi will not report playback state to Plex Media Server",
+                xbmc.LOGERROR
+            )
             return
 
         self._itemId = int(itemId)
@@ -182,8 +189,13 @@ class Player(xbmc.Player):
             # register settings
             settings = self._mediaProvider.prepareSettings()
             if not settings:
-                log('failed to load settings for {} ({}) playing from {}' \
-                    .format(self._item.title, self._file, mediaProvider2str(self._mediaProvider)), xbmc.LOGWARNING)
+                log(
+                    (
+                        f"failed to load settings for {self._item.title} ({self._file}) "
+                        f"playing from {mediaProvider2str(self._mediaProvider)}"
+                    ),
+                    xbmc.LOGWARNING
+                )
                 self._reset()
                 return
 
@@ -194,9 +206,12 @@ class Player(xbmc.Player):
         else:
             self._reset()
 
+    def _addExternalSubtitles(self, plexServer: PlexServer):
+        """Add external subtitles to the player
 
-    def _addExternalSubtitles(self, plexServer):
-        '''Add external subtitles to the player'''
+        :param plexServer: Plex server to get subtitles from
+        :type plexServer: :class:`PlexServer`
+        """
         if not self._item:
             return
 
@@ -211,20 +226,23 @@ class Player(xbmc.Player):
                     subtitle.language if subtitle.language else SUBTITLE_UNKNOWN,
                     subtitle.selected
                 )
-                log('external subtitle "{}" [{}] at index {} added for "{}" ({}) from media provider {}' \
-                    .format(
-                        subtitle.title,
-                        subtitle.language,
-                        subtitle.index,
-                        self._item.title,
-                        self._file,
-                        mediaProvider2str(self._mediaProvider)
-                    )
+                log(
+                    (
+                        f"external subtitle '{subtitle.title}' [{subtitle.language}]"
+                        f"at index {subtitle.index} added for '{self._item.title}' ({self._file})"
+                        f"from media provider {mediaProvider2str(self._mediaProvider)}"
+                    ),
+                    xbmc.LOGINFO
                 )
 
+    def _syncPlaybackState(self, state: str = None, playbackTime: float = None):
+        """Syncs last available state and playback time then publishes to PMS
 
-    def _syncPlaybackState(self, state=None, playbackTime=None):
-        '''Syncs last available state and publishes to PMS'''
+        :param state: Current state of playback in the player (playing, paused, stopped)
+        :type state: str
+        :param playbackTime: Amount of time in milliseconds playback is into the video
+        :type playbackTime: float
+        """
         # either update state or time
         if not state and not playbackTime:
             return
@@ -248,14 +266,12 @@ class Player(xbmc.Player):
                 duration=self._duration
             )
 
-
-    def _getPlayingTime(self):
-        '''Gets current xbmc.Player time in miliseconds'''
+    def _getPlayingTime(self) -> float:
+        """Gets current xbmc.Player time in miliseconds"""
         return toMilliseconds(self.getTime())
 
-
     def _reset(self):
-        '''Resets player member variables to default'''
+        """Resets player member variables to default"""
         # Player item
         self._file = None
         self._item = None
@@ -263,4 +279,4 @@ class Player(xbmc.Player):
         self._mediaProvider = None
         self._duration = None
         # Player last known state
-        self._state = {'playbackTime': None, 'state': None, 'lastreport': None}
+        self._state = {'playbackTime': 0, 'state': None, 'lastreport': 0}

@@ -5,13 +5,21 @@
 #  SPDX-License-Identifier: GPL-2.0-or-later
 #  See LICENSES/README.md for more information.
 #
+"""
+Various constant variables used by the plex library.
+"""
 
 import xbmcmediaimport
 
 # import related constants
-SUPPORTED_MEDIA_TYPES = set([ xbmcmediaimport.MediaTypeMovie, xbmcmediaimport.MediaTypeVideoCollection,
+SUPPORTED_MEDIA_TYPES = {
+    xbmcmediaimport.MediaTypeMovie,
+    xbmcmediaimport.MediaTypeVideoCollection,
     xbmcmediaimport.MediaTypeMusicVideo,
-    xbmcmediaimport.MediaTypeTvShow, xbmcmediaimport.MediaTypeSeason, xbmcmediaimport.MediaTypeEpisode ])
+    xbmcmediaimport.MediaTypeTvShow,
+    xbmcmediaimport.MediaTypeSeason,
+    xbmcmediaimport.MediaTypeEpisode
+}
 
 # API related constants
 REQUEST_TIMEOUT = 5
@@ -64,7 +72,6 @@ WS_MESSAGE_NOTIFICATION_ACTIVITY_EVENT = 'event'
 # WS_MESSAGE_NOTIFICATION_ACTIVITY_EVENT_STARTED = 'started'
 # WS_MESSAGE_NOTIFICATION_ACTIVITY_EVENT_UPDATED = 'updated'
 WS_MESSAGE_NOTIFICATION_ACTIVITY_EVENT_ENDED = 'ended'
-WS_MESSAGE_NOTIFICATION_ACTIVITY_ACTIVITY = 'Activity'
 WS_MESSAGE_NOTIFICATION_ACTIVITY_ACTIVITY_TYPE = 'type'
 WS_MESSAGE_NOTIFICATION_ACTIVITY_ACTIVITY_TYPE_REFRESH_ITEMS = 'library.refresh.items'
 WS_MESSAGE_NOTIFICATION_ACTIVITY_ACTIVITY_CONTEXT = 'Context'

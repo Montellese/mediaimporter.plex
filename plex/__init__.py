@@ -5,8 +5,20 @@
 #  SPDX-License-Identifier: GPL-2.0-or-later
 #  See LICENSES/README.md for more information.
 #
+"""
+Package to facilitate interaction with Plex and Kodi for the addon.
 
-def Initialize():
+Modules:
+    api
+    constants
+    player
+    provider_observer
+    server
+"""
+
+
+def Initialize() -> None:
+    """Initialize the package by setting some base variables in the plexapi"""
     import xbmc
 
     import plexapi
