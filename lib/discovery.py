@@ -5,14 +5,13 @@
 #  SPDX-License-Identifier: GPL-2.0-or-later
 #  See LICENSES/README.md for more information.
 #
-
+from __future__ import annotations  # Necessary for forward reference annotations (return of fromString method)
 import time
 from six import iteritems
 import socket
 import struct
 
 import xbmc
-import xbmcaddon
 import xbmcmediaimport
 
 from lib.monitor import Monitor
@@ -21,19 +20,37 @@ from lib.utils import log, mediaProvider2str
 import plex
 from plex.server import Server
 
+
 class PlexServer():
+    """Class for storing and representing connection details and state of a Plex server"""
     def __init__(self):
         self.id = ''
         self.name = ''
         self.address = ''
         self.registered = False
-        self.lastseen = None
+        self.lastseen = 0.0
 
-    def isExpired(self, timeoutS):
+    def isExpired(self, timeoutS: float) -> bool:
+        """Check if the PMS has been seen within the timeout period
+
+        :param timeoutS: Timeout value in seconds
+        :type timeoutS: float
+        :return: Whether the PMS has been seen within the timeout period or not
+        :rtype: bool
+        """
         return self.registered and self.lastseen + timeoutS < time.time()
 
     @staticmethod
-    def fromString(data, ip):
+    def fromString(data: str, ip: str) -> PlexServer:
+        """Construct and return a PlexServer object from discovery response data
+
+        :param data: Response from a discovery message
+        :type data: str
+        :param ip: IP address the response was received from
+        :type ip: str
+        :return: Constructed PLexServer object
+        :rtype: :class:`PlexServer`
+        """
         Separator = b':'
         ServerPropertyResourceIdentifier = b'Resource-Identifier'
         ServerPropertyName = b'Name'
@@ -69,7 +86,7 @@ class PlexServer():
         server = PlexServer()
         server.id = id
         server.name = name
-        server.address = 'http://{}:{}'.format(ip, port)
+        server.address = f"http://{ip}:{port}"
         server.registered = False
         server.lastseen = time.time()
 
@@ -78,7 +95,9 @@ class PlexServer():
 
         return server
 
+
 class DiscoveryService:
+    """Class that handles discovery of Plex servers on the local network"""
     DiscoveryAddress = '239.0.0.250'
     DiscoveryPort = 32414
     DiscoveryMessage = b'M-SEARCH * HTTP/1.1\r\n'
@@ -94,6 +113,7 @@ class DiscoveryService:
         self._start()
 
     def _discover(self):
+        """Sends discovery multicast message on the existing socket and waits for resposne, adding server if found"""
         # broadcast the discovery message
         self._sock.sendto(self.DiscoveryMessage, (self.DiscoveryAddress, self.DiscoveryPort))
 
@@ -103,25 +123,34 @@ class DiscoveryService:
         try:
             (data, address) = self._sock.recvfrom(1024)
         except socket.timeout:
-            return # nothing to do
+            return
 
-        if not address or not data or not self.DiscoveryResponse in data:
-            return # nothing to do
+        if not address or not data or self.DiscoveryResponse not in data:
+            return
 
         server = PlexServer.fromString(data, address[0])
-        if not server is None:
+        if server is not None:
             self._addServer(server)
 
-    def _addServer(self, server):
+    def _addServer(self, server: PlexServer):
+        """Add a discovered PMS server as a MediaProvider to the Kodi mediaimport system
+
+        :param server: The discovered PlexServer to add into the Kodi mediaimport system
+        :type server: :class:`PlexServer`
+        """
         registerServer = False
 
         # check if the server is already known
-        if not server.id in self._servers:
+        if server.id not in self._servers:
             self._servers[server.id] = server
             registerServer = True
         else:
             # check if the server has already been registered or if some of its properties have changed
-            if not self._servers[server.id].registered or self._servers[server.id].name != server.name or self._servers[server.id].address != server.address:
+            if (
+                    not self._servers[server.id].registered
+                    or self._servers[server.id].name != server.name
+                    or self._servers[server.id].address != server.address
+            ):
                 self._servers[server.id] = server
                 registerServer = True
             else:
@@ -135,33 +164,44 @@ class DiscoveryService:
         providerId = Server.BuildProviderId(server.id)
         providerIconUrl = Server.BuildIconUrl(server.address)
 
-        provider = xbmcmediaimport.MediaProvider(providerId, server.address, server.name, providerIconUrl, plex.constants.SUPPORTED_MEDIA_TYPES)
+        provider = xbmcmediaimport.MediaProvider(
+            providerId,
+            server.address,
+            server.name,
+            providerIconUrl,
+            plex.constants.SUPPORTED_MEDIA_TYPES
+        )
 
         # store local authentication in settings
         providerSettings = provider.prepareSettings()
         if not providerSettings:
             return None
 
-        providerSettings.setInt(plex.constants.SETTINGS_PROVIDER_AUTHENTICATION, plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL)
+        providerSettings.setInt(
+            plex.constants.SETTINGS_PROVIDER_AUTHENTICATION,
+            plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
+        )
         providerSettings.save()
 
         if xbmcmediaimport.addAndActivateProvider(provider):
             self._servers[server.id].registered = True
-            log('Plex Media Server {} successfully added and activated'.format(mediaProvider2str(provider)))
+            log(f"Plex Media Server {mediaProvider2str(provider)} successfully added and activated", xbmc.LOGINFO)
         else:
             self._servers[server.id].registered = False
-            log('failed to add and/or activate Plex Media Server {}'.format(mediaProvider2str(provider)))
+            log(f"failed to add and/or activate Plex Media Server {mediaProvider2str(provider)}", xbmc.LOGINFO)
 
     def _expireServers(self):
+        """Check registered Plex servers against timeout and expire any inactive ones"""
         for serverId, server in iteritems(self._servers):
             if not server.isExpired(10):
                 continue
 
             server.registered = False
             xbmcmediaimport.deactivateProvider(serverId)
-            log('Plex Media Server "{}" ({}) deactivated due to inactivity'.format(server.name, server.id))
+            log(f"Plex Media Server '{server.name}' ({server.id}) deactivated due to inactivity", xbmc.LOGINFO)
 
     def _start(self):
+        """Start the discovery and registration process"""
         log('Looking for Plex Media Servers...')
 
         # setup the UDP broadcast socket

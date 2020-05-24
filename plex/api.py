@@ -5,11 +5,14 @@
 #  SPDX-License-Identifier: GPL-2.0-or-later
 #  See LICENSES/README.md for more information.
 #
+import datetime
+from typing import List
 
 import xbmc
 from xbmcgui import ListItem
 import xbmcmediaimport
 
+import plexapi
 from plexapi import library, video
 
 from plex.constants import *
@@ -24,17 +27,58 @@ PLEX_LIBRARY_TYPE_COLLECTION = 'collection'
 
 # mapping of Kodi and Plex media types
 PLEX_MEDIA_TYPES = [
-    { 'kodi': xbmcmediaimport.MediaTypeMovie, 'plex': PLEX_LIBRARY_TYPE_MOVIE, 'libtype': PLEX_LIBRARY_TYPE_MOVIE, 'label': 32002 },
-    { 'kodi': xbmcmediaimport.MediaTypeVideoCollection, 'plex': PLEX_LIBRARY_TYPE_COLLECTION, 'libtype': PLEX_LIBRARY_TYPE_COLLECTION, 'label': 32007 },
-    { 'kodi': xbmcmediaimport.MediaTypeTvShow, 'plex': PLEX_LIBRARY_TYPE_TVSHOW, 'libtype': PLEX_LIBRARY_TYPE_TVSHOW, 'label': 32003 },
-    { 'kodi': xbmcmediaimport.MediaTypeSeason, 'plex': PLEX_LIBRARY_TYPE_TVSHOW, 'libtype': PLEX_LIBRARY_TYPE_SEASON, 'label': 32004 },
-    { 'kodi': xbmcmediaimport.MediaTypeEpisode, 'plex': PLEX_LIBRARY_TYPE_TVSHOW, 'libtype': PLEX_LIBRARY_TYPE_EPISODE, 'label': 32005 },
-    { 'kodi': xbmcmediaimport.MediaTypeMusicVideo, 'plex': PLEX_LIBRARY_TYPE_MOVIE, 'libtype': PLEX_LIBRARY_TYPE_MOVIE, 'label': 32006 }
+    {
+        'kodi': xbmcmediaimport.MediaTypeMovie,
+        'plex': PLEX_LIBRARY_TYPE_MOVIE,
+        'libtype': PLEX_LIBRARY_TYPE_MOVIE,
+        'label': 32002
+    },
+    {
+        'kodi': xbmcmediaimport.MediaTypeVideoCollection,
+        'plex': PLEX_LIBRARY_TYPE_COLLECTION,
+        'libtype': PLEX_LIBRARY_TYPE_COLLECTION,
+        'label': 32007
+    },
+    {
+        'kodi': xbmcmediaimport.MediaTypeTvShow,
+        'plex': PLEX_LIBRARY_TYPE_TVSHOW,
+        'libtype': PLEX_LIBRARY_TYPE_TVSHOW,
+        'label': 32003
+    },
+    {
+        'kodi': xbmcmediaimport.MediaTypeSeason,
+        'plex': PLEX_LIBRARY_TYPE_TVSHOW,
+        'libtype': PLEX_LIBRARY_TYPE_SEASON,
+        'label': 32004
+    },
+    {
+        'kodi': xbmcmediaimport.MediaTypeEpisode,
+        'plex': PLEX_LIBRARY_TYPE_TVSHOW,
+        'libtype': PLEX_LIBRARY_TYPE_EPISODE,
+        'label': 32005
+    },
+    {
+        'kodi': xbmcmediaimport.MediaTypeMusicVideo,
+        'plex': PLEX_LIBRARY_TYPE_MOVIE,
+        'libtype': PLEX_LIBRARY_TYPE_MOVIE,
+        'label': 32006
+    }
 ]
 
+
 class Api:
+    """Static class with helper methods for working with the Plex and Kodi APIs"""
     @staticmethod
-    def compareMediaProviders(lhs, rhs):
+    def compareMediaProviders(lhs: object, rhs: object) -> bool:
+        """Check if the provided mediaProvier objects are identical or not.
+
+        :param lhs: First media provider to compare
+        :type lhs: object
+        :param rhs: Second media provider to compare
+        :type rhs: object
+        :return: Whether the media providers are identical or not
+        :rtype: bool
+        """
         if not lhs or not rhs:
             return False
 
@@ -69,40 +113,70 @@ class Api:
         return True
 
     @staticmethod
-    def getPlexMediaType(mediaType):
+    def getPlexMediaType(mediaType: str) -> dict:
+        """Get the Plex media type matching the provided Kodi media type
+
+        :param mediaType: Kodi media type obejct
+        :type mediaType: str
+        :return: Mapping entry, dict with kodi, plex, libtype, and label keys
+        :rtype: dict
+        """
         if not mediaType:
             raise ValueError('invalid mediaType')
 
-        mappedMediaType = [ x for x in PLEX_MEDIA_TYPES if x['kodi'] == mediaType ]
+        mappedMediaType = [x for x in PLEX_MEDIA_TYPES if x['kodi'] == mediaType]
         if not mappedMediaType:
-            return None
+            return {}
 
         return mappedMediaType[0]
 
     @staticmethod
-    def getKodiMediaTypes(plexMediaType):
+    def getKodiMediaTypes(plexMediaType: str) -> List[dict]:
+        """Get the Kodi media types matching the provided Plex media type
+
+        :param plexMediaType: Plex media type (movie, show, collection)
+        :type plexMediaType: str
+        :return: List of matching media type mapping dict
+        :rtype: list
+        """
         if not plexMediaType:
             raise ValueError('invalid plexMediaType')
 
         mappedMediaTypes = [ x for x in PLEX_MEDIA_TYPES if x['plex'] == plexMediaType ]
         if not mappedMediaTypes:
-            return None
+            return []
 
         return mappedMediaTypes
 
     @staticmethod
-    def getKodiMediaTypesFromPlexLibraryTpe(plexLibraryType):
+    def getKodiMediaTypesFromPlexLibraryType(plexLibraryType: str) -> List[dict]:
+        """Get the Kodi media types matching the provided library type
+
+        :param plexLibraryType: Type of plex library (movie, show, season, episode, collection)
+        :type plexLibraryType: str
+        :return: List of matching media type mapping dict
+        :rtype: list
+        """
         if not plexLibraryType:
             raise ValueError('invalid plexLibraryType')
 
         mappedMediaTypes = [ x for x in PLEX_MEDIA_TYPES if x['libtype'] == plexLibraryType ]
         if not mappedMediaTypes:
-            return None
+            return []
 
         return mappedMediaTypes
 
     @staticmethod
-    def validatePlexLibraryItemType(plexItem, libraryType):
+    def validatePlexLibraryItemType(plexItem: video.Video, libraryType: str) -> bool:
+        """Perform validation on the plexItem, confirming it belongs in the provided library type
+
+        :param plexItem: Plex item to validate
+        :type plexItem: class:`video.Video`
+        :param libraryType: Type of plex library (movie, show, season, episode, collection)
+        :type libraryType: str
+        :return: Status of validation, whether the plex item belongs in the library or not
+        :rtype: bool
+        """
         if not plexItem:
             raise ValueError('invalid plexItem')
         if not libraryType:
@@ -124,14 +198,28 @@ class Api:
         return isinstance(plexItem, plexMediaClass)
 
     @staticmethod
-    def MillisecondsToSeconds(milliseconds):
+    def MillisecondsToSeconds(milliseconds: float) -> float:
+        """Convert milliseconds to seconds
+
+        :param milliseconds: Time in milliseconds
+        :type milliseconds: float
+        :return: Time in seconds
+        :rtype: float
+        """
         if not milliseconds:
             return 0.0
 
         return milliseconds / 1000
 
     @staticmethod
-    def convertDateTimeToDbDate(dateTime):
+    def convertDateTimeToDbDate(dateTime: datetime.datetime) -> str:
+        """Convert datetime object into '%Y-%m-%d' date only format
+
+        :param dateTime: Datetime object to convert
+        :type dateTime: :class:`datetime.datetime`
+        :return: Date in string format
+        :rtype: str
+        """
         if not dateTime:
             return ''
 
@@ -141,7 +229,14 @@ class Api:
             return ''
 
     @staticmethod
-    def convertDateTimeToDbDateTime(dateTime):
+    def convertDateTimeToDbDateTime(dateTime: datetime.datetime) -> str:
+        """Convert datetime object into '%Y-%m-%d %H:%M:%S' datetime format
+
+        :param dateTime: Datetime object to convert
+        :type dateTime: :class:`datetime.datetime`
+        :return: DateTime in string format
+        :rtype: str
+        """
         if not dateTime:
             return ''
 
@@ -151,33 +246,68 @@ class Api:
             return ''
 
     @staticmethod
-    def ListFromString(string):
+    def ListFromString(string: str) -> List[str]:
+        """Convert semi-colon deliminated string into a list of strings
+
+        :param string: String to convert
+        :type string: str
+        :return: List of clean sub-strings
+        :rtype: list
+        """
         if not string:
             return []
 
-        return [ stringPart.strip() for stringPart in string.split(';') ]
+        return [stringPart.strip() for stringPart in string.split(';')]
 
     @staticmethod
-    def ListFromMediaTags(mediaTags):
+    def ListFromMediaTags(mediaTags: List[plexapi.media.MediaTag]) -> List[str]:
+        """Convert list of `plexapi.media.MediaTag` objects into a list of the tag names
+
+        :param mediaTags: List of `plexapi.media.MediaTag` to parse
+        :type mediaTags: list
+        :return: List of the tag name strings
+        :rtype: list
+        """
         if not mediaTags:
             return []
 
         return [ mediaTag.tag.strip() for mediaTag in mediaTags ]
 
     @staticmethod
-    def getItemIdFromListItem(listItem):
+    def getItemIdFromListItem(listItem: ListItem) -> int:
+        """Get the item ID from a ListItem object
+
+        :param listItem: ListItem object to get the ID of
+        :type listItem: :class:`ListItem`
+        :return: ID of the item
+        :rtype: int
+        """
         return int(listItem.getUniqueID(PLEX_PROTOCOL))
 
     @staticmethod
-    def getItemIdFromPlexKey(plexItemKey):
+    def getItemIdFromPlexKey(plexItemKey: str) -> int:
+        """Get the item ID from a plex XML key
+
+        :param plexItemKey: Plex XML item key to parse the ID of
+        :type plexItemKey: str
+        :return: Parsed ID
+        :rtype: int
+        """
         parts = plexItemKey.split('/')
         if not parts:
-            return None
+            return 0
 
         return int(parts[-1])
 
     @staticmethod
-    def getPlexMediaClassFromMediaType(mediaType):
+    def getPlexMediaClassFromMediaType(mediaType: str) -> video.Video:
+        """Get the plexapi video obejct type matching the provided Kodi media type
+
+        :param mediaType: Kodi Media type object
+        :type mediaType: str
+        :return: Plex media class obejct matching the provided media type
+        :rtype: :class:`video.Video`
+        """
         mappedMediaType = Api.getPlexMediaType(mediaType)
         if not mappedMediaType:
             return None
@@ -185,7 +315,14 @@ class Api:
         return Api.getPlexMediaClassFromLibraryType(mappedMediaType['libtype'])
 
     @staticmethod
-    def getPlexMediaClassFromLibraryType(libraryType):
+    def getPlexMediaClassFromLibraryType(libraryType: str) -> video.Video:
+        """Get the plexapi vode object type matching the provided Plex library type
+
+        :param libraryType: Type of plex library (movie, show, season, episode, collection)
+        :type libraryType: str
+        :return: Plex media class obejct matching the provided media type
+        :rtype: :class:`video.Video`
+        """
         if libraryType == PLEX_LIBRARY_TYPE_MOVIE:
             return video.Movie
         if libraryType == PLEX_LIBRARY_TYPE_TVSHOW:
@@ -200,7 +337,22 @@ class Api:
         return None
 
     @staticmethod
-    def getPlexItemDetails(plexServer, plexItemId, plexItemClass=None):
+    def getPlexItemDetails(
+            plexServer: plexapi.server.PlexServer,
+            plexItemId: int,
+            plexItemClass: video.Video = None
+    ) -> video.Video:
+        """Get details of Plex item from the specified server by its ID
+
+        :param plexServer: Plex server object to interact with
+        :type plexServer: :class:`plexapi.server.PlexServer`
+        :param plexItemId: ID of the item to retreive from the server
+        :type plexItemId: int
+        :param plexItemClass: Plex video object to populate
+        :type plexItemClass: :class:`video.Video`, optional
+        :return: Populated video object with details of the item
+        :rtype: :class:`video.Video`
+        """
         if not plexServer:
             raise ValueError('invalid plexServer')
         if not plexItemId:
@@ -213,7 +365,22 @@ class Api:
         return plexLibrary.fetchItem(plexItemId, cls=plexItemClass)
 
     @staticmethod
-    def getPlexItemAsListItem(plexServer, plexItemId, plexItemClass=None):
+    def getPlexItemAsListItem(
+            plexServer: plexapi.server.PlexServer,
+            plexItemId: int,
+            plexItemClass: video.Video = None
+    ) -> ListItem:
+        """Get details of Plex item from the specified server by its ID and conver to xbmcgui ListItem object
+
+        :param plexServer: Plex server object to interact with
+        :type plexServer: :class:`plexapi.server.PlexServer`
+        :param plexItemId: ID of the item to retreive from the server
+        :type plexItemId: int
+        :param plexItemClass: Plex video object to populate
+        :type plexItemClass: :class:`video.Video`, optional
+        :return: ListItem object populated with the retreived plex item details
+        :rtype: :class:`ListItem`
+        """
         if not plexServer:
             raise ValueError('invalid plexServer')
         if not plexItemId:
@@ -226,38 +393,59 @@ class Api:
         return Api.toFileItem(plexServer, plexItem)
 
     @staticmethod
-    def toFileItem(plexServer, plexItem, mediaType=None, plexLibType=None):
+    def toFileItem(
+            plexServer: plexapi.server.PlexServer,
+            plexItem: video.Video,
+            mediaType: str = "",
+            plexLibType: str = ""
+    ) -> ListItem:
+        """Validate, populate, and convert the provided plexItem into a Kodi GUI ListItem object
+
+        :param plexServer: Plex server to gather additional details from
+        :type plexServer: plexapi.server.PlexServer
+        :param plexItem: Plex object populated with information about the item
+        :type plexItem: video.Video
+        :param mediaType: Kodi Media type object, defaults to ''
+        :type mediaType: str, optional
+        :param plexLibType: Type of plex library (movie, show, season, episode, collection), defaults to ''
+        :type plexLibType: str, optional
+        :return: ListItem object populated with the retreived plex item details
+        :rtype: ListItem
+        """
         # determine the matching Plex library type if possible
         checkMediaType = mediaType is not None
         if checkMediaType and not plexLibType:
             mappedMediaType = Api.getPlexMediaType(mediaType)
             if not mappedMediaType:
-                log('cannot import unsupported media type "{}"'.format(mediaType), xbmc.LOGERROR)
+                log(f"cannot import unsupported media type '{mediaType}'", xbmc.LOGERROR)
                 return None
 
             plexLibType = mappedMediaType['libtype']
 
         # make sure the item matches the media type
         if plexLibType is not None and not Api.validatePlexLibraryItemType(plexItem, plexLibType):
-            log('cannot import {} item from invalid Plex library item: {}'.format(mediaType, plexItem), xbmc.LOGERROR)
+            log(f"cannot import {mediaType} item from invalid Plex library item: {plexItem}", xbmc.LOGERROR)
             return None
 
         # determine the Kodi media type based on the Plex library type
         if not checkMediaType:
             plexLibType = plexItem.type
-            mappedMediaTypes = Api.getKodiMediaTypesFromPlexLibraryTpe(plexLibType)
+            mappedMediaTypes = Api.getKodiMediaTypesFromPlexLibraryType(plexLibType)
             if not mappedMediaTypes:
-                log('cannot import unsupported Plex library type "{}"'.format(plexLibType), xbmc.LOGERROR)
+                log(f"cannot import unsupported Plex library type '{plexLibType}'", xbmc.LOGERROR)
                 return None
 
             if len(mappedMediaTypes) > 1:
-                log('{} supported media type for Plex library type "{}"'.format(len(mappedMediaTypes), plexLibType), xbmc.LOGDEBUG)
+                log(
+                    f"{len(mappedMediaTypes)} supported media type for Plex library type '{plexLibType}'",
+                    xbmc.LOGDEBUG
+                )
 
             mediaType = mappedMediaTypes[0]['kodi']
 
         itemId = plexItem.ratingKey
         if not itemId:
-            log('cannot import {} item without identifier'.format(mediaType), xbmc.LOGERROR)
+            log(f"cannot import {mediaType} item without identifier", xbmc.LOGERROR)
             return None
 
         item = ListItem(label=plexItem.title)
@@ -266,13 +454,34 @@ class Api:
         Api.fillVideoInfos(plexServer, itemId, plexItem, mediaType, item)
 
         if not item.getPath():
-            log('failed to retrieve a path for {} item "{}"'.format(mediaType, item.getLabel()), xbmc.LOGWARNING)
+            log(f"failed to retrieve a path for {mediaType} item '{item.getLabel()}'", xbmc.LOGWARNING)
             return None
 
         return item
 
     @staticmethod
-    def fillVideoInfos(plexServer, itemId, plexItem, mediaType, item):
+    def fillVideoInfos(
+            plexServer: plexapi.server.PlexServer,
+            itemId: int,
+            plexItem: video.Video,
+            mediaType: str,
+            item: ListItem
+    ):
+        """
+        Populate the provided ListItem object with existing data from plexItem
+        and additional detail pulled from the provided plexServer
+
+        :param plexServer: Plex server to gather additional details from
+        :type plexServer: plexapi.server.PlexServer
+        :param itemId: Unique ID of the plex Video object item
+        :type itemId: int
+        :param plexItem: Plex object populated with information about the item
+        :type plexItem: video.Video
+        :param mediaType: Kodi Media type object
+        :type mediaType: str
+        :param item: Instantiated Kodi ListItem to populate with additional details
+        :type item: :class:`ListItem`
+        """
         info = {
             'mediatype': mediaType,
             'path': '',
@@ -437,16 +646,20 @@ class Api:
                     })
 
                 for audioStream in part.audioStreams():
-                    item.addStreamInfo('audio', {
-                        'codec': audioStream.codec,
-                        'language': audioStream.language,
-                        'channels': audioStream.channels
-                     })
+                    item.addStreamInfo(
+                        'audio', {
+                            'codec': audioStream.codec,
+                            'language': audioStream.language,
+                            'channels': audioStream.channels
+                        }
+                    )
 
                 for subtitleStream in part.subtitleStreams():
-                    item.addStreamInfo('subtitle', {
-                        'language': subtitleStream.language
-                     })
+                    item.addStreamInfo(
+                        'subtitle', {
+                            'language': subtitleStream.language
+                        }
+                    )
 
         if mediaPart:
             # extract the absolute / actual path and the stream URL from the selected MediaPart

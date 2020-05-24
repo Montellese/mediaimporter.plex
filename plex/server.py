@@ -8,13 +8,23 @@
 
 from plexapi.server import PlexServer
 
-from lib.utils import Url
-from plex.constants import \
-    PLEX_PROTOCOL, \
-    SETTINGS_PROVIDER_AUTHENTICATION, SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL, SETTINGS_PROVIDER_TOKEN
+from plex.constants import (
+    PLEX_PROTOCOL,
+    SETTINGS_PROVIDER_AUTHENTICATION,
+    SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL,
+    SETTINGS_PROVIDER_TOKEN
+)
+
+import xbmcmediaimport
+
 
 class Server:
-    def __init__(self, provider):
+    """Class to represent a Plex Media Server with helper methods for interacting with the plexapi
+
+    :param provider: MediaProver from Kodi to implement
+    :type provider: :class:`xbmcmediaimport.MediaProvider`
+    """
+    def __init__(self, provider: xbmcmediaimport.MediaProvider):
         if not provider:
             raise ValueError('Invalid provider')
 
@@ -26,12 +36,13 @@ class Server:
             raise ValueError('Invalid provider without settings')
 
         self._localOnly = settings.getInt(SETTINGS_PROVIDER_AUTHENTICATION) == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
-        self._token = None
+        self._token = ""
         if not self._localOnly:
-            self._token =  settings.getString(SETTINGS_PROVIDER_TOKEN)
+            self._token = settings.getString(SETTINGS_PROVIDER_TOKEN)
         self._plex = None
 
     def Authenticate(self):
+        """Create an authenticated session with the Plex server"""
         if not self._plex:
             try:
                 self._plex = PlexServer(baseurl=self._url, token=self._token)
@@ -40,28 +51,50 @@ class Server:
 
         return self._plex is not None
 
-    def Id(self):
+    def Id(self) -> int:
+        """Get the Id of the plex server"""
         return self._id
 
-    def Url(self):
+    def Url(self) -> str:
+        """Get the Url of the plex server"""
         return self._url
 
-    def AccessToken(self):
+    def AccessToken(self) -> str:
+        """Get the AccessToken for the plex server"""
         return self._token
 
-    def PlexServer(self):
+    def PlexServer(self) -> PlexServer:
+        """Get an authenticated plex session object from plexapi
+
+        :return: Authenticated plex session through plexapi PlexServer object
+        :rtype: :class:`PlexServer`
+        """
         self.Authenticate()
         return self._plex
 
     @staticmethod
-    def BuildProviderId(serverId):
+    def BuildProviderId(serverId: int):
+        """Format a ProviderId string using the provided serverId
+
+        :param serverId: ID of the server to format into a PrivderId
+        :type serverId: int
+        :return: ProviderId formatted string
+        :rtype: str
+        """
         if not serverId:
             raise ValueError('Invalid serverId')
 
-        return '{}://{}/'.format(PLEX_PROTOCOL, serverId)
+        return f"{PLEX_PROTOCOL}://{serverId}/"
 
     @staticmethod
-    def BuildIconUrl(baseUrl):
+    def BuildIconUrl(baseUrl: str) -> str:
+        """Format the URL for icons from the provided baseUrl, NOT IMPLEMENTED
+
+        :param baseUrl: URL to use as the base for the icon url
+        :type baseUrl: str
+        :return: Formatted Icon URL string
+        :rtype: str
+        """
         if not baseUrl:
             raise ValueError('Invalid baseUrl')
 

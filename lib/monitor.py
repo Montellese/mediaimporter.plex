@@ -9,5 +9,6 @@
 import xbmc
 
 class Monitor(xbmc.Monitor):
+    """Customization of the xbmc Monitor class for addon"""
     def __init__(self):
         xbmc.Monitor.__init__(self)
