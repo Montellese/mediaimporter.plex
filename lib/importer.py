@@ -50,7 +50,7 @@ import plexapi.exceptions
 from plexapi.myplex import MyPlexAccount, MyPlexPinLogin, MyPlexResource
 from plexapi.server import PlexServer
 
-from lib.utils import localize, log, mediaProvider2str
+from lib.utils import localize, log, mediaProvider2str, normalizeString
 import plex
 from plex.api import Api
 from plex.server import Server
@@ -236,7 +236,7 @@ def linkToMyPlexAccount() -> MyPlexAccount:
         return None
 
     # show the user the pin
-    dialog.ok(localize(32015), localize(32053), f"[COLOR FFE5A00D]{pinLogin.pin}[/COLOR]")
+    dialog.ok(localize(32015), localize(32053) + normalizeString(f" [COLOR FFE5A00D]{pinLogin.pin}[/COLOR]"))
 
     # check the status of the authentication
     while not pinLogin.finished:
@@ -334,7 +334,7 @@ def linkMyPlexAccount(handle: int, _options: dict):
         xbmcgui.Dialog().ok(localize(32015), localize(32058))
         return
 
-    xbmcgui.Dialog().ok(localize(32015), localize(32059).format(username))
+    xbmcgui.Dialog().ok(localize(32015), localize(32059, username))
 
     # change the settings
     providerSettings.setString(plex.constants.SETTINGS_PROVIDER_USERNAME, username)
@@ -434,7 +434,7 @@ def discoverProviderWithMyPlex(handle: int, _options: dict) -> xbmcmediaimport.M
 
         if localConnections:
             # ask the user whether to use a local or remote connection
-            isLocal = dialog.yesno(localize(32056), localize(32057).format(server.name))
+            isLocal = dialog.yesno(localize(32056), localize(32057, server.name))
 
         urls = []
         if isLocal:
@@ -459,7 +459,7 @@ def discoverProviderWithMyPlex(handle: int, _options: dict) -> xbmcmediaimport.M
 
                 # if this is a relay ask the user if using it is ok
                 if isRelay:
-                    connectViaRelay = dialog.yesno(localize(32056), localize(32061).format(server.name))
+                    connectViaRelay = dialog.yesno(localize(32056), localize(32061, server.name))
                     if not connectViaRelay:
                         log(
                             f"ignoring relay connection to the Plex Media Server '{server.name}' at {url}",
@@ -474,7 +474,7 @@ def discoverProviderWithMyPlex(handle: int, _options: dict) -> xbmcmediaimport.M
                 continue
 
         if not baseUrl:
-            dialog.ok(localize(32056), localize(32060).format(server.name))
+            dialog.ok(localize(32056), localize(32060, server.name))
             log(
                 f"failed to connect to the Plex Media Server '{server.name}' for MyPlex account {username}",
                 xbmc.LOGWARNING
@@ -731,7 +731,7 @@ def settingOptionsFillerLibrarySections(handle: int, _options: dict):
 
     server = Server(mediaProvider)
     if not server.Authenticate():
-        log('failed to connect to Plex Media Server for {}'.format(mediaProvider2str(mediaProvider)), xbmc.LOGWARNING)
+        log(f"failed to connect to Plex Media Server for {mediaProvider2str(mediaProvider)}", xbmc.LOGWARNING)
         return
 
     plexServer = server.PlexServer()
@@ -864,9 +864,9 @@ def execImport(handle: int, options: dict):
             continue
 
         plexLibType = mappedMediaType['libtype']
-        localizedMediaType = localize(mappedMediaType['label'])
+        localizedMediaType = localize(mappedMediaType['label']).decode()
 
-        xbmcmediaimport.setProgressStatus(handle, localize(32001).format(localizedMediaType))
+        xbmcmediaimport.setProgressStatus(handle, localize(32001, localizedMediaType))
 
         log(f"importing {mediaType} items from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
 

@@ -88,15 +88,18 @@ def normalizeString(text: str) -> bytes:
     return text
 
 
-def localize(id: int) -> bytes:
+def localize(id: int, format_input: str = "") -> bytes:
     """Helper function to pull localized strings from language resources
 
     :param id: ID of the string to pull from the resource database
     :type id: int
+    :param format_input: String to .format into the localized string before encoding
+    :type format_input: str, optional
     :return: Localized and normalized byte string
     :rtype: bytes
     """
-    return normalizeString(__addon__.getLocalizedString(id))
+    local_string = __addon__.getLocalizedString(id)
+    return normalizeString(local_string.format(format_input))
 
 
 def toMilliseconds(seconds: float) -> int:
