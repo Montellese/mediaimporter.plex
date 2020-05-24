@@ -26,7 +26,7 @@ from lib.utils import log, mediaProvider2str, toMilliseconds, localize
 
 REPORTING_INTERVAL = 5  # seconds
 
-SUBTITLE_UNKNOWN = localize(32064)
+SUBTITLE_UNKNOWN = localize(32064).decode()
 
 
 class Player(xbmc.Player):

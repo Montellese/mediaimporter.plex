@@ -21,14 +21,14 @@ from plex.server import Server
 
 from lib.utils import log, mediaImport2str, mediaProvider2str
 
-ENDPOINT = '/:/websockets/notifications'
-
 
 class ProviderObserver:
     """Class for observing the PMS websocket stream for live updates and processing the messages."""
     class Action:
         Start = 0
         Stop = 1
+
+    ENDPOINT = '/:/websockets/notifications'
 
     def __init__(self):
         # default values
@@ -93,7 +93,6 @@ class ProviderObserver:
             raise ValueError('invalid mediaProvider')
 
         self._actions.append((ProviderObserver.Action.Start, mediaProvider))
-        log(f"started observation of {mediaProvider.friendlyName}", xbmc.LOGINFO)
 
     def Stop(self):
         """End all observation tasks"""
