@@ -502,7 +502,8 @@ class Api:
             'director': [],
             'writer': [],
             'genre': [],
-            'country': []
+            'country': [],
+            'tag': []
         }
 
         date = None
@@ -525,6 +526,7 @@ class Api:
                 'playcount': plexItem.viewCount,
                 'lastplayed': Api.convertDateTimeToDbDateTime(plexItem.lastViewedAt),
             })
+            info['tag'].append(plexItem.librarySectionTitle)
 
         if isinstance(plexItem, video.Movie):
             info.update({
