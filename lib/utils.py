@@ -16,18 +16,15 @@ Functions:
     toMilliseconds
     mediaProvider2str
     mediaImport2str
-
-Classes:
-    Url
 """
 
-from six import PY3
-from six.moves.urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 import unicodedata
 
-import xbmc
-import xbmcaddon
-import xbmcmediaimport
+from six import PY3
+
+import xbmc  # pylint: disable=import-error
+import xbmcaddon  # pylint: disable=import-error
+import xbmcmediaimport  # pylint: disable=import-error
 
 __addon__ = xbmcaddon.Addon()
 __addonid__ = __addon__.getAddonInfo('id')
@@ -65,7 +62,7 @@ def string2Unicode(text: str, encoding: str = 'utf-8') -> str:
         if PY3:
             text = str(text)
         else:
-            text = unicode(text, encoding)
+            text = unicode(text, encoding)  # noqa: F821
     except:
         pass
 
@@ -88,7 +85,7 @@ def normalizeString(text: str) -> bytes:
     return text
 
 
-def localize(id: int, format_input: str = "") -> bytes:
+def localize(identifier: int, format_input: str = "") -> bytes:
     """Helper function to pull localized strings from language resources
 
     :param id: ID of the string to pull from the resource database
@@ -98,7 +95,7 @@ def localize(id: int, format_input: str = "") -> bytes:
     :return: Localized and normalized byte string
     :rtype: bytes
     """
-    local_string = __addon__.getLocalizedString(id)
+    local_string = __addon__.getLocalizedString(identifier)
     return normalizeString(local_string.format(format_input))
 
 
@@ -139,34 +136,3 @@ def mediaImport2str(mediaImport: xbmcmediaimport.MediaImport):
         raise ValueError('invalid mediaImport')
 
     return f"{mediaImport.getPath()} ({mediaImport.getMediaTypes()})"
-
-# Commenting out for now, not used in the project anywwhere
-#
-# class Url:
-#     @staticmethod
-#     def append(url, *args):
-#         if not url:
-#             return ''
-#
-#         # remove a potentially trailing slash
-#         if url.endswith('/'):
-#             url = url[:-1]
-#
-#         for arg in args:
-#             if not arg.startswith('/'):
-#                 url += '/'
-#
-#             url += arg
-#
-#         return url
-#
-#     @staticmethod
-#     def addOptions(url, options):
-#         if not url:
-#             return ''
-#
-#         urlParts = list(urlparse(url))
-#         urlQuery = dict(parse_qsl(urlParts[4]))
-#         urlQuery.update(options)
-#         urlParts[4] = urlencode(urlQuery)
-#         return urlunparse(urlParts)

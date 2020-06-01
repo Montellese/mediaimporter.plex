@@ -6,13 +6,14 @@
 #  See LICENSES/README.md for more information.
 #
 
-import xbmcmediaimport
+import xbmcmediaimport  # pylint: disable=import-error
 
 from lib.monitor import Monitor
-from lib.utils import log, mediaImport2str, mediaProvider2str
+from lib.utils import log, mediaImport2str
 
 from plex.player import Player
 from plex.provider_observer import ProviderObserver
+
 
 class PlexObserverService(xbmcmediaimport.Observer):
     """Class that handles observation of Plex servers for live updates"""

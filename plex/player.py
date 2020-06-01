@@ -8,8 +8,8 @@
 import time
 import threading
 
-import xbmc
-import xbmcmediaimport
+import xbmc  # pylint: disable=import-error
+import xbmcmediaimport  # pylint: disable=import-error
 
 from plexapi.server import PlexServer
 from plex.api import Api
@@ -39,6 +39,12 @@ class Player(xbmc.Player):
         self._lock = threading.Lock()
 
         self._state = {'playbacktime': 0, 'state': None, 'lastreport': 0}
+        self._duration = None
+
+        self._file = None
+        self._item = None
+        self._itemId = None
+        self._mediaProvider = None
 
     def AddProvider(self, mediaProvider: xbmcmediaimport.MediaProvider):
         """Adds a media provider to the player
@@ -91,12 +97,12 @@ class Player(xbmc.Player):
             self._startPlayback()
             self._syncPlaybackState(playbackTime=self._getPlayingTime(), state=PLEX_PLAYER_PLAYING)
 
-    def onPlayBackSeek(self, time, seekOffset):
+    def onPlayBackSeek(self, seekTime, seekOffset):  # pylint: disable=unused-argument
         """Event handler: triggered when seeking through the video"""
         with self._lock:
             self._syncPlaybackState(playbackTime=self._getPlayingTime())
 
-    def onPlayBackSeekChapter(self, chapter):
+    def onPlayBackSeekChapter(self, chapter):  # pylint: disable=unused-argument
         """Event handler: triggered when the seeking chapters"""
         with self._lock:
             self._syncPlaybackState(playbackTime=self._getPlayingTime())
@@ -148,7 +154,7 @@ class Player(xbmc.Player):
         if not mediaProviderId:
             return
 
-        if not mediaProviderId in self._providers:
+        if mediaProviderId not in self._providers:
             log(
                 (
                     f"currently playing item {playingItem.getLabel()} ({self._file}) "

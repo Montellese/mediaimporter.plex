@@ -11,9 +11,9 @@ from typing import List
 import websocket
 
 import plexapi
-import xbmc
-import xbmcgui
-import xbmcmediaimport
+import xbmc  # pylint: disable=import-error
+import xbmcgui  # pylint: disable=import-error
+import xbmcmediaimport  # pylint: disable=import-error
 
 import plex.api as api
 import plex.constants as constants
@@ -162,7 +162,8 @@ class ProviderObserver:
                 break
             except Exception as e:
                 log(
-                    f"unknown exception when receiving data from {mediaProvider2str(self._mediaProvider)}: {e.args[0]}",
+                    f"unknown exception when receiving data from {mediaProvider2str(self._mediaProvider)}: "
+                    f"{e.args[0]}",
                     xbmc.LOGWARNING
                 )
                 break
@@ -299,9 +300,9 @@ class ProviderObserver:
         if not playSessionStates:
             return
 
-        for playSessionState in playSessionStates:
-            # TODO(Montellese)
-            pass
+        # TODO(Montellese)
+        # for playSessionState in playSessionStates:
+        #     pass
 
     def _ProcessMessageActivity(self, data: dict):
         """Gather details from an Activity message, format into a plex change and trigger further processing
@@ -376,10 +377,8 @@ class ProviderObserver:
         changedItems = []
         for (changesetType, plexItemId, plexItemClass) in changedPlexItems:
             item = None
-            if (
-                    changesetType == xbmcmediaimport.MediaImportChangesetTypeAdded
-                    or changesetType == xbmcmediaimport.MediaImportChangesetTypeChanged
-            ):
+            if changesetType in \
+               (xbmcmediaimport.MediaImportChangesetTypeAdded, xbmcmediaimport.MediaImportChangesetTypeChanged):
                 # get all details for the added / changed item
                 item = self._GetItemDetails(plexItemId, plexItemClass)
                 if not item:
@@ -435,16 +434,16 @@ class ProviderObserver:
             changedItemsMap[mediaImport].append((changesetType, item))
 
         # finally pass the changed items grouped by their media import to Kodi
-        for (mediaImport, changedItems) in changedItemsMap.items():
-            if xbmcmediaimport.changeImportedItems(mediaImport, changedItems):
+        for (mediaImport, itemsByImport) in changedItemsMap.items():
+            if xbmcmediaimport.changeImportedItems(mediaImport, itemsByImport):
                 log(
-                    f"changed {len(changedItems)} imported items for media import {mediaImport2str(mediaImport)}",
+                    f"changed {len(itemsByImport)} imported items for media import {mediaImport2str(mediaImport)}",
                     xbmc.LOGINFO
                 )
             else:
                 log(
                     (
-                        f"failed to change {len(changedItems)} imported items "
+                        f"failed to change {len(itemsByImport)} imported items "
                         f"for media import {mediaImport2str(mediaImport)}"
                     ),
                     xbmc.LOGWARNING
@@ -476,7 +475,8 @@ class ProviderObserver:
 
         itemMediaType = videoInfoTag.getMediaType()
 
-        matchingImports = [mediaImport for mediaImport in self._imports if itemMediaType in mediaImport.getMediaTypes()]
+        matchingImports = \
+            [mediaImport for mediaImport in self._imports if itemMediaType in mediaImport.getMediaTypes()]
         if not matchingImports:
             return None
 

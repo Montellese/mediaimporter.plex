@@ -6,7 +6,8 @@
 #  See LICENSES/README.md for more information.
 #
 
-import xbmc
+import xbmc  # pylint: disable=import-error
+
 
 class Monitor(xbmc.Monitor):
     """Customization of the xbmc Monitor class for addon"""

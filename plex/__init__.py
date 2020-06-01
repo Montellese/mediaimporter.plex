@@ -19,9 +19,9 @@ Modules:
 
 def Initialize() -> None:
     """Initialize the package by setting some base variables in the plexapi"""
-    import xbmc
+    import xbmc  # pylint: disable=import-error,import-outside-toplevel
 
-    import plexapi
+    import plexapi  # pylint: disable=import-outside-toplevel
 
     plexapi.X_PLEX_PRODUCT = 'Kodi'
     plexapi.X_PLEX_VERSION = xbmc.getInfoLabel('System.BuildVersionShort')

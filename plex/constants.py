@@ -9,7 +9,7 @@
 Various constant variables used by the plex library.
 """
 
-import xbmcmediaimport
+import xbmcmediaimport  # pylint: disable=import-error
 
 # import related constants
 SUPPORTED_MEDIA_TYPES = {

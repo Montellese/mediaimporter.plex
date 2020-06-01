@@ -8,9 +8,9 @@
 import datetime
 from typing import List
 
-import xbmc
-from xbmcgui import ListItem
-import xbmcmediaimport
+import xbmc  # pylint: disable=import-error
+from xbmcgui import ListItem  # pylint: disable=import-error
+import xbmcmediaimport  # pylint: disable=import-error
 
 import plexapi
 from plexapi import library, video
@@ -142,7 +142,7 @@ class Api:
         if not plexMediaType:
             raise ValueError('invalid plexMediaType')
 
-        mappedMediaTypes = [ x for x in PLEX_MEDIA_TYPES if x['plex'] == plexMediaType ]
+        mappedMediaTypes = [x for x in PLEX_MEDIA_TYPES if x['plex'] == plexMediaType]
         if not mappedMediaTypes:
             return []
 
@@ -160,7 +160,7 @@ class Api:
         if not plexLibraryType:
             raise ValueError('invalid plexLibraryType')
 
-        mappedMediaTypes = [ x for x in PLEX_MEDIA_TYPES if x['libtype'] == plexLibraryType ]
+        mappedMediaTypes = [x for x in PLEX_MEDIA_TYPES if x['libtype'] == plexLibraryType]
         if not mappedMediaTypes:
             return []
 
@@ -271,7 +271,7 @@ class Api:
         if not mediaTags:
             return []
 
-        return [ mediaTag.tag.strip() for mediaTag in mediaTags ]
+        return [mediaTag.tag.strip() for mediaTag in mediaTags]
 
     @staticmethod
     def getItemIdFromListItem(listItem: ListItem) -> int:

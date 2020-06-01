@@ -7,12 +7,13 @@
 #
 from __future__ import annotations  # Necessary for forward reference annotations (return of fromString method)
 import time
-from six import iteritems
 import socket
 import struct
 
-import xbmc
-import xbmcmediaimport
+from six import iteritems
+
+import xbmc  # pylint: disable=import-error
+import xbmcmediaimport  # pylint: disable=import-error
 
 from lib.monitor import Monitor
 from lib.utils import log, mediaProvider2str
@@ -61,30 +62,30 @@ class PlexServer():
         if not ip:
             return None
 
-        id = None
+        identifier = None
         name = None
         port = 32400
 
         for line in data.splitlines():
-            lineParts = [ linePart.strip() for linePart in line.split(Separator) ]
+            lineParts = [linePart.strip() for linePart in line.split(Separator)]
             if len(lineParts) > 2:
-                lineParts = [ lineParts[0], Separator.join(lineParts[1:])]
+                lineParts = [lineParts[0], Separator.join(lineParts[1:])]
             if len(lineParts) != 2:
                 continue
 
             serverProperty, serverPropertyValue = lineParts
             if serverProperty == ServerPropertyResourceIdentifier:
-                id = serverPropertyValue.decode('utf-8')
+                identifier = serverPropertyValue.decode('utf-8')
             elif serverProperty == ServerPropertyName:
                 name = serverPropertyValue.decode('utf-8')
             elif serverProperty == ServerPropertyPort:
                 port = int(serverPropertyValue)
 
-        if not id or not name or port <= 0 or port > 65535:
+        if not identifier or not name or port <= 0 or port > 65535:
             return None
 
         server = PlexServer()
-        server.id = id
+        server.id = identifier
         server.name = name
         server.address = f"http://{ip}:{port}"
         server.registered = False
@@ -175,7 +176,7 @@ class DiscoveryService:
         # store local authentication in settings
         providerSettings = provider.prepareSettings()
         if not providerSettings:
-            return None
+            return
 
         providerSettings.setInt(
             plex.constants.SETTINGS_PROVIDER_AUTHENTICATION,

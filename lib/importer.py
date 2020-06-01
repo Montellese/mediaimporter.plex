@@ -38,13 +38,14 @@ Functions:
 """
 
 import sys
-from six.moves.urllib.parse import parse_qs, unquote, urlparse
 from typing import List
 
-import xbmc
-import xbmcaddon
-import xbmcgui
-import xbmcmediaimport
+from six.moves.urllib.parse import parse_qs, unquote, urlparse
+
+import xbmc  # pylint: disable=import-error
+import xbmcaddon  # pylint: disable=import-error
+import xbmcgui  # pylint: disable=import-error
+import xbmcmediaimport  # pylint: disable=import-error
 
 import plexapi.exceptions
 from plexapi.myplex import MyPlexAccount, MyPlexPinLogin, MyPlexResource
@@ -455,7 +456,7 @@ def discoverProviderWithMyPlex(handle: int, _options: dict) -> xbmcmediaimport.M
                     continue
 
                 # try to connect to the server
-                _plexServer = PlexServer(baseurl=url, token=server.accessToken, timeout=plex.constants.REQUEST_TIMEOUT)
+                _ = PlexServer(baseurl=url, token=server.accessToken, timeout=plex.constants.REQUEST_TIMEOUT)
 
                 # if this is a relay ask the user if using it is ok
                 if isRelay:
@@ -592,8 +593,8 @@ def canImport(handle: int, options: dict):
     path = unquote(options['path'][0])
 
     # try to get the Plex Media Server's identifier from the path
-    id = getServerId(path)
-    if not id:
+    identifier = getServerId(path)
+    if not identifier:
         return
 
     xbmcmediaimport.setCanImport(handle, True)
@@ -776,24 +777,24 @@ def loadImportSettings(handle: int, _options: dict):
     settings.setLoaded()
 
 
-def canUpdateMetadataOnProvider(handle, options):
+def canUpdateMetadataOnProvider(handle, options):  # pylint: disable=unused-argument
     """NOT IMPLEMENTED"""
     # TODO(Montellese)
     xbmcmediaimport.setCanUpdateMetadataOnProvider(False)
 
 
-def canUpdatePlaycountOnProvider(handle, options):
+def canUpdatePlaycountOnProvider(handle, options):  # pylint: disable=unused-argument
     """NOT IMPLEMENTED"""
     xbmcmediaimport.setCanUpdatePlaycountOnProvider(True)
 
 
-def canUpdateLastPlayedOnProvider(handle, options):
+def canUpdateLastPlayedOnProvider(handle, options):  # pylint: disable=unused-argument
     """NOT IMPLEMENTED"""
     # TODO(Montellese)
     xbmcmediaimport.setCanUpdateLastPlayedOnProvider(False)
 
 
-def canUpdateResumePositionOnProvider(handle, options):
+def canUpdateResumePositionOnProvider(handle, options):  # pylint: disable=unused-argument
     """NOT IMPLEMENTED"""
     # TODO(Montellese)
     xbmcmediaimport.setCanUpdateResumePositionOnProvider(False)
