@@ -1,0 +1,154 @@
+# Kodi Media Center language file
+# Addon Name: Plex Media Importer
+# Addon id: mediaimporter.plex
+# Addon Provider: Montellese
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Wanilton Campos (campos.wanilton@gmail.com)\n"
+"Language-Team: Portuguese (Brazil) (http://www.transifex.com/projects/p/xbmc-addons/language/pt_br/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: pt_BR\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#32001"
+msgid "Retrieving {}..."
+msgstr "Recuperando {}..."
+
+msgctxt "#32002"
+msgid "movies"
+msgstr "filmes"
+
+msgctxt "#32003"
+msgid "TV shows"
+msgstr "seriados"
+
+msgctxt "#32004"
+msgid "seasons"
+msgstr "temporadas"
+
+msgctxt "#32005"
+msgid "episodes"
+msgstr "episódios"
+
+msgctxt "#32006"
+msgid "music videos"
+msgstr "shows"
+
+msgctxt "#32007"
+msgid "collections"
+msgstr "coleções"
+
+msgctxt "#32010"
+msgid "Plex Media Server"
+msgstr "Servidor de Mídia Plex"
+
+msgctxt "#32011"
+msgid "Access"
+msgstr "Acesso"
+
+msgctxt "#32012"
+msgid "Authentication"
+msgstr "Autenticação"
+
+msgctxt "#32013"
+msgid "Local only"
+msgstr "Somente local"
+
+msgctxt "#32014"
+msgid "MyPlex"
+msgstr "MyPlex"
+
+msgctxt "#32015"
+msgid "Link MyPlex account"
+msgstr "Link a conta MyPlex"
+
+msgctxt "#32016"
+msgid "MyPlex Username"
+msgstr "Nome do usuário MyPlex"
+
+msgctxt "#32017"
+msgid "Test connection"
+msgstr "Teste de conexão"
+
+msgctxt "#32018"
+msgid "Successfully connected."
+msgstr "Conectado com sucesso."
+
+msgctxt "#32019"
+msgid "Connection failed!"
+msgstr "Conexão falhou!"
+
+msgctxt "#32020"
+msgid "Library sections"
+msgstr "Seções da coleção"
+
+msgctxt "#32021"
+msgid "Library"
+msgstr "Coleção"
+
+#. Titel of the dialog to select the authentication method
+msgctxt "#32050"
+msgid "Plex Media Server authentication method"
+msgstr "Método de autenticação ao Servidor de Mídia Plex"
+
+msgctxt "#32051"
+msgid "Plex Media Server URL"
+msgstr "URL para o Servidor de Mídia Plex"
+
+msgctxt "#32052"
+msgid "Failed to retrieve PIN to link MyPlex account!"
+msgstr "Falhou ao obter o PIN para lincar a conta MyPlex!"
+
+msgctxt "#32053"
+msgid "Visit [COLOR FFE5A00D]https://plex.tv/link[/COLOR] and enter the following PIN:"
+msgstr "Visite [COLOR FFE5A00D]https://plex.tv/link[/COLOR] e entre o seguinte PIN:"
+
+msgctxt "#32054"
+msgid "Linking MyPlex account has expired!"
+msgstr "Link a conta MyPlex expirou!"
+
+msgctxt "#32055"
+msgid "Choose a Plex Media Servers"
+msgstr "Escolha um dos Servidores de Mídia Plex"
+
+msgctxt "#32056"
+msgid "Plex Media Server access"
+msgstr "Acesso ao Servidor de Mídia Plex"
+
+msgctxt "#32057"
+msgid "Is the Plex Media Server \"{}\" accessible on the local network?"
+msgstr "Esta o Servidor de Mídia Plex \"{}\" acessível na rede local?"
+
+msgctxt "#32058"
+msgid "Linking MyPlex account failed!"
+msgstr "Lincar a conta MyPlex falhou!"
+
+msgctxt "#32059"
+msgid "Successfully linked to [COLOR FFE5A00D]{}[/COLOR]'s MyPlex account."
+msgstr "Lincado com sucesso para [COLOR FFE5A00D]{}[/COLOR] conta MyPlex."
+
+msgctxt "#32060"
+msgid "Failed to connect to Plex Media Server \"{}\"."
+msgstr "Falhou ao conectar ao Servidor de Mídia Plex \"{}\"."
+
+msgctxt "#32061"
+msgid "Plex Media Server \"{}\" is only accessible via relay. Is that ok?"
+msgstr "O servidor de Mídia Plex \"{}\" só pode ser acessado via retransmissão. Tudo bem?"
+
+msgctxt "#32062"
+msgid "Playback"
+msgstr "Reprodução"
+
+msgctxt "#32063"
+msgid "Enable external subtitles"
+msgstr "Ativer legendas externas"
+
+msgctxt "#32064"
+msgid "Unknown"
+msgstr "Desconhecido"
