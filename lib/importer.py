@@ -36,7 +36,8 @@ Functions:
     testConnection
     updateOnProvider
 """
-
+from dateutil import parser
+from datetime import timezone
 import sys
 from typing import List
 
@@ -52,6 +53,8 @@ from plexapi.myplex import MyPlexAccount, MyPlexPinLogin, MyPlexResource
 from plexapi.server import PlexServer
 
 from lib.utils import localize, log, mediaProvider2str, normalizeString
+from lib.settings import SynchronizationSettings
+
 import plex
 from plex.api import Api
 from plex.server import Server
@@ -705,6 +708,35 @@ def loadProviderSettings(handle: int, _options: dict):
     settings.setLoaded()
 
 
+def forceSync(handle: int, _options: dict):
+    """Confirm if user wants to force a full sync and update the settings hash
+
+    :param handle: Handle id from input
+    :type handle: int
+    :param _options: Options/parameters passed in with the call, Unused
+    :type _options: dict
+    """
+    # ask the user whether he is sure
+    force = xbmcgui.Dialog().yesno(localize(32022), localize(32065))
+    if not force:
+        return
+
+    # retrieve the media import
+    mediaImport = xbmcmediaimport.getImport(handle)
+    if not mediaImport:
+        log('cannot retrieve media import', xbmc.LOGERROR)
+        return
+
+    # prepare the media provider settings
+    importSettings = mediaImport.prepareSettings()
+    if not importSettings:
+        log('cannot prepare media import settings', xbmc.LOGERROR)
+        return
+
+    # reset the synchronization hash setting to force a full synchronization
+    SynchronizationSettings.ResetHash(importSettings, save=False)
+
+
 def settingOptionsFillerLibrarySections(handle: int, _options: dict):
     """Find and set the library sections setting from Plex matching a mediaImport's media type
 
@@ -767,6 +799,9 @@ def loadImportSettings(handle: int, _options: dict):
     if not settings:
         log('cannot retrieve media import settings', xbmc.LOGERROR)
         return
+
+    # register force sync callback
+    settings.registerActionCallback(plex.constants.SETTINGS_IMPORT_FORCE_SYNC, 'forcesync')
 
     # register a setting options filler for the list of views
     settings.registerOptionsFillerCallback(
@@ -836,9 +871,10 @@ def execImport(handle: int, options: dict):
         log("cannot retrieve media provider", xbmc.LOGERROR)
         return
 
-    # prepare the media provider settings
-    if not mediaProvider.prepareSettings():
-        log("cannot prepare media provider settings", xbmc.LOGERROR)
+    # prepare and get the media provider settings
+    providerSettings = mediaProvider.prepareSettings()
+    if not providerSettings:
+        log("cannot prepare provider settings", xbmc.LOGERROR)
         return
 
     # create a Plex Media Server instance
@@ -852,6 +888,37 @@ def execImport(handle: int, options: dict):
     if not librarySections:
         log(f"cannot retrieve {mediaTypes} items without any library section", xbmc.LOGERROR)
         return
+
+    # Decide if doing fast sync or not, if so set filter string to include updatedAt
+    fastSync = True
+    lastSync = mediaImport.getLastSynced()
+
+    # Check if import settings have changed, or if this is the first time we are importing this library type
+    if not lastSync:
+        fastSync = False
+        SynchronizationSettings.CalculateHash(
+            importSettings=importSettings,
+            providerSettings=providerSettings,
+            save=True
+        )
+        log("first time syncronizing library, forcing a full syncronization", xbmc.LOGINFO)
+    elif SynchronizationSettings.HaveChanged(
+            importSettings=importSettings,
+            providerSettings=providerSettings,
+            save=True
+    ):
+        fastSync = False
+        log("library import settings have changed, forcing a full syncronization", xbmc.LOGINFO)
+
+    if SynchronizationSettings.HaveChanged(importSettings=importSettings, providerSettings=providerSettings, save=True):
+        fastSync = False
+        log("library import settings have changed, forcing a full syncronization", xbmc.LOGINFO)
+
+    if fastSync:
+        log(f"performing fast syncronization of items viewed or updated since {str(lastSync)}")
+        lastSyncEpoch = parser.parse(lastSync).strftime('%s')
+        updatedFilter = {'updatedAt>': lastSyncEpoch}
+        watchedFilter = {'lastViewedAt>': lastSyncEpoch}
 
     # loop over all media types to be imported
     progressTotal = len(mediaTypes)
@@ -872,7 +939,7 @@ def execImport(handle: int, options: dict):
         log(f"importing {mediaType} items from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
 
         # handle library sections
-        plexItems = []
+        itemsToImport = []
         sectionsProgressTotal = len(librarySections)
         for sectionsProgress, librarySection in enumerate(librarySections):
             if xbmcmediaimport.shouldCancel(handle, sectionsProgress, sectionsProgressTotal):
@@ -884,46 +951,82 @@ def execImport(handle: int, options: dict):
                 log(f"cannot import {mediaType} items from unknown library section {librarySection}", xbmc.LOGWARNING)
                 continue
 
-            # get all matching items from the library section
-            try:
-                plexSectionItems = section.search(libtype=plexLibType)
-                plexItems.extend(plexSectionItems)
-            except plexapi.exceptions.BadRequest as e:
-                log(
-                    f"failed to retrieve {mediaType} items from {mediaProvider2str(mediaProvider)}: {e}",
-                    xbmc.LOGWARNING
-                )
-                return
+            # get all matching items from the library section and turn them into ListItems
+            sectionProgress = 0
+            sectionProgressTotal = ITEM_REQUEST_LIMIT
 
-        # parse all items
-        items = []
-        itemsProgressTotal = len(plexItems)
-        for itemsProgress, plexItem in enumerate(plexItems):
-            if xbmcmediaimport.shouldCancel(handle, itemsProgress, itemsProgressTotal):
-                return
+            while sectionProgress < sectionProgressTotal:
+                if xbmcmediaimport.shouldCancel(handle, sectionProgress, sectionProgressTotal):
+                    return
 
-            try:
-                item = Api.toFileItem(plexServer, plexItem, mediaType, plexLibType)
-                if not item:
-                    continue
+                maxResults = min(ITEM_REQUEST_LIMIT, sectionProgressTotal - sectionProgress)
 
-                items.append(item)
+                try:
+                    if fastSync:
+                        updatedPlexItems = section.search(
+                            libtype=plexLibType,
+                            container_start=sectionProgress,
+                            container_size=maxResults,
+                            maxresults=maxResults,
+                            **updatedFilter
+                        )
+                        log(f"discovered {len(updatedPlexItems)} updated items from {mediaProvider2str(mediaProvider)}")
+                        watchedPlexItems = section.search(
+                            libtype=plexLibType,
+                            container_start=sectionProgress,
+                            container_size=maxResults,
+                            maxresults=maxResults,
+                            **watchedFilter
+                        )
+                        log(f"discovered {len(watchedPlexItems)} new watched items from {mediaProvider2str(mediaProvider)}")
 
-            except plexapi.exceptions.BadRequest as e:
-                # Api.convertDateTimeToDbDateTime may return (404) not_found for orphaned items in the library
-                log(
-                    (
-                        f"failed to retrieve item {plexItem.title} with key {plexItem.key} "
-                        f"from {mediaProvider2str(mediaProvider)}: {e}"
-                    ),
-                    xbmc.LOGWARNING)
-                continue
+                        plexItems = updatedPlexItems
+                        plexItems.extend(
+                            [item for item in watchedPlexItems if item.key not in [item.key for item in plexItems]]
+                        )
 
-        if items:
-            log(f"{len(items)} {mediaType} items imported from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
-            xbmcmediaimport.addImportItems(handle, items, mediaType)
+                    else:
+                        plexItems = section.search(
+                            libtype=plexLibType,
+                            container_start=sectionProgress,
+                            container_size=maxResults,
+                            maxresults=maxResults,
+                        )
+                except plexapi.exceptions.BadRequest as e:
+                    log(f"failed to fetch {mediaType} items from {mediaProvider2str(mediaProvider)}: {e}", xbmc.LOGINFO)
+                    return
 
-    xbmcmediaimport.finishImport(handle)
+                # Update sectionProgressTotal now that search has run and totalSize has been updated
+                sectionProgressTotal = section.totalSize
+
+                plexItemsProgressTotal = len(plexItems)
+                for plexItemsProgress, plexItem in enumerate(plexItems):
+                    if xbmcmediaimport.shouldCancel(handle, plexItemsProgress, plexItemsProgressTotal):
+                        return
+
+                    sectionProgress += 1
+
+                    try:
+                        item = Api.toFileItem(plexServer, plexItem, mediaType, plexLibType)
+                        if not item:
+                            continue
+
+                        itemsToImport.append(item)
+                    except plexapi.exceptions.BadRequest as e:
+                        # Api.convertDateTimeToDbDateTime may return (404) not_found for orphaned items in the library
+                        log(
+                            (
+                                f"failed to retrieve item {plexItem.title} with key {plexItem.key} "
+                                f"from {mediaProvider2str(mediaProvider)}: {e}"
+                            ),
+                            xbmc.LOGWARNING)
+                        continue
+
+        if itemsToImport:
+            log(f"{len(itemsToImport)} {mediaType} items imported from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
+            xbmcmediaimport.addImportItems(handle, itemsToImport, mediaType)
+
+    xbmcmediaimport.finishImport(handle, fastSync)
 
 
 def updateOnProvider(handle: int, _options: dict):
@@ -1022,6 +1125,7 @@ ACTIONS = {
     # custom setting callbacks
     'linkmyplexaccount': linkMyPlexAccount,
     'testconnection': testConnection,
+    'forcesync': forceSync,
 
     # custom setting options fillers
     'settingoptionsfillerlibrarysections': settingOptionsFillerLibrarySections

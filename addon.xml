@@ -5,6 +5,7 @@
         <import addon="script.module.websocket_client" version="0.57.0"/>
         <import addon="script.module.requests" />
         <import addon="script.module.six" />
+        <import addon="script.module.dateutil" />
         <!-- <import addon="script.module.web-pdb" /> -->
     </requires>
     <extension point="kodi.mediaimporter" discovery="discovery.py" library="importer.py" observer="observer.py">

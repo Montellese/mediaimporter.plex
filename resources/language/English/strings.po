@@ -92,6 +92,14 @@ msgctxt "#32021"
 msgid "Library"
 msgstr ""
 
+msgctxt "#32022"
+msgid "Force full synchronization"
+msgstr ""
+
+msgctxt "#32023"
+msgid "Direct Play Settings"
+msgstr ""
+
 #. Titel of the dialog to select the authentication method
 msgctxt "#32050"
 msgid "Plex Media Server authentication method"
@@ -151,4 +159,8 @@ msgstr ""
 
 msgctxt "#32064"
 msgid "Unknown"
+msgstr ""
+
+msgctxt "#32065"
+msgid "Do you really want to force a full synchronization?"
 msgstr ""

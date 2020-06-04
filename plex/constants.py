@@ -96,6 +96,8 @@ SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES = 'plex.enableexternalsubti
 
 # media import setting identifiers and values
 SETTINGS_IMPORT_LIBRARY_SECTIONS = 'plex.librarysections'
+SETTINGS_IMPORT_SYNC_SETTINGS_HASH = 'plex.syncsettingshash'
+SETTINGS_IMPORT_FORCE_SYNC = 'plex.forcesync'
 
 # player states below
 PLEX_PLAYER_PLAYING = 'playing'

@@ -35,8 +35,9 @@ class Server:
         if not settings:
             raise ValueError('Invalid provider without settings')
 
-        self._localOnly = \
+        self._localOnly = bool(
             settings.getInt(SETTINGS_PROVIDER_AUTHENTICATION) == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
+        )
         self._token = ""
         if not self._localOnly:
             self._token = settings.getString(SETTINGS_PROVIDER_TOKEN)

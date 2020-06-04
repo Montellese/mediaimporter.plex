@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <settings version="1">
   <section id="import" label="32010">
+    <category id="sync" label="39530">
+      <group id="1">
+        <setting id="plex.forcesync" type="action" label="32022">
+          <level>0</level>
+          <control type="button" format="action" />
+        </setting>
+      </group>
+    </category>
     <category id="plex" label="32021">
       <group id="1">
         <setting id="plex.librarysections" type="list[string]" label="32020">
@@ -12,6 +20,14 @@
           <control type="list" format="string">
             <multiselect>true</multiselect>
           </control>
+        </setting>
+        <setting id="plex.syncsettingshash" type="string">
+          <visible>false</visible>
+          <level>4</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
         </setting>
       </group>
     </category>
