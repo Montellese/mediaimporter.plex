@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import threading
-import websocket
+
 from plexapi import log
 
 
@@ -40,6 +40,11 @@ class AlertListener(threading.Thread):
         self._ws = None
 
     def run(self):
+        try:
+            import websocket
+        except ImportError:
+            log.warning("Can't use the AlertListener without websocket")
+            return
         # create the websocket connection
         url = self._server.url(self.key, includeToken=True).replace('http', 'ws')
         log.info('Starting AlertListener: %s', url)
@@ -57,10 +62,10 @@ class AlertListener(threading.Thread):
 
     def _onMessage(self, *args):
         """ Called when websocket message is received.
-            In earlier releases, websocket-client returned a tuple of two parameters: a websocket.app.WebSocketApp object
-            and the message as a STR. Current releases appear to only return the message.
+            In earlier releases, websocket-client returned a tuple of two parameters: a websocket.app.WebSocketApp
+            object and the message as a STR. Current releases appear to only return the message.
             We are assuming the last argument in the tuple is the message.
-            This is to support compatibility with current and previous releases of websocket-client. 
+            This is to support compatibility with current and previous releases of websocket-client.
         """
         message = args[-1]
         try:
@@ -73,10 +78,10 @@ class AlertListener(threading.Thread):
 
     def _onError(self, *args):  # pragma: no cover
         """ Called when websocket error is received.
-            In earlier releases, websocket-client returned a tuple of two parameters: a websocket.app.WebSocketApp object
-            and the error. Current releases appear to only return the error.
-            We are assuming the last argument in the tuple is the message. 
-            This is to support compatibility with current and previous releases of websocket-client. 
+            In earlier releases, websocket-client returned a tuple of two parameters: a websocket.app.WebSocketApp
+            object and the error. Current releases appear to only return the error.
+            We are assuming the last argument in the tuple is the message.
+            This is to support compatibility with current and previous releases of websocket-client.
         """
         err = args[-1]
         log.error('AlertListener Error: %s' % err)

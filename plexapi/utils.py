@@ -7,11 +7,16 @@ import time
 import zipfile
 from datetime import datetime
 from getpass import getpass
-from threading import Thread, Event
-# Montellese: not needed
-# from tqdm import tqdm
+from threading import Event, Thread
+
+import requests
 from plexapi import compat
 from plexapi.exceptions import NotFound
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
 
 log = logging.getLogger('plexapi')
 
@@ -60,7 +65,7 @@ def registerPlexObject(cls):
 
 def cast(func, value):
     """ Cast the specified value to the specified type (returned by func). Currently this
-        only support int, float, bool. Should be extended if needed.
+        only support str, int, float, bool. Should be extended if needed.
 
         Parameters:
             func (func): Calback function to used cast to type (int, bool, float).
@@ -68,7 +73,13 @@ def cast(func, value):
     """
     if value is not None:
         if func == bool:
-            return bool(int(value))
+            if value in (1, True, "1", "true"):
+                return True
+            elif value in (0, False, "0", "false"):
+                return False
+            else:
+                raise ValueError(value)
+
         elif func in (int, float):
             try:
                 return func(value)
@@ -181,7 +192,7 @@ def toDatetime(value, format=None):
         if format:
             try:
                 value = datetime.strptime(value, format)
-            except ValueError:
+            except (ValueError, TypeError):  # mediaimport.plex patch to handle occasional TypeError
                 log.info('Failed to parse %s to datetime, defaulting to None', value)
                 return None
         else:
@@ -288,17 +299,17 @@ def download(url, token, filename=None, savepath=None, session=None, chunksize=4
 
     # save the file to disk
     log.info('Downloading: %s', fullpath)
-    if showstatus:  # pragma: no cover
+    if showstatus and tqdm:  # pragma: no cover
         total = int(response.headers.get('content-length', 0))
         bar = tqdm(unit='B', unit_scale=True, total=total, desc=filename)
 
     with open(fullpath, 'wb') as handle:
         for chunk in response.iter_content(chunk_size=chunksize):
             handle.write(chunk)
-            if showstatus:
+            if showstatus and tqdm:
                 bar.update(len(chunk))
 
-    if showstatus:  # pragma: no cover
+    if showstatus and tqdm:  # pragma: no cover
         bar.close()
     # check we want to unzip the contents
     if fullpath.endswith('zip') and unpack:
@@ -376,3 +387,15 @@ def choose(msg, items, attr):  # pragma: no cover
 
         except (ValueError, IndexError):
             pass
+
+
+def getAgentIdentifier(section, agent):
+    """ Return the full agent identifier from a short identifier, name, or confirm full identifier. """
+    agents = []
+    for ag in section.agents():
+        identifiers = [ag.identifier, ag.shortIdentifier, ag.name]
+        if agent in identifiers:
+            return ag.identifier
+        agents += identifiers
+    raise NotFound('Couldnt find "%s" in agents list (%s)' %
+                   (agent, ', '.join(agents)))
