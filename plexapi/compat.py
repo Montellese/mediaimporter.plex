@@ -25,9 +25,9 @@ except ImportError:
     from urllib import quote
 
 try:
-    from urllib.parse import quote_plus
+    from urllib.parse import quote_plus, quote
 except ImportError:
-    from urllib import quote_plus
+    from urllib import quote_plus, quote
 
 try:
     from urllib.parse import unquote
@@ -39,20 +39,18 @@ try:
 except ImportError:
     from ConfigParser import ConfigParser
 
-# Montellese: cElementTree is not reliable in Kodi
+try:
+    from xml.etree import cElementTree as ElementTree
+except ImportError:
+    from xml.etree import ElementTree
+# mediaimport.plex patch: cElementTree is not reliable in Kodi
 # try:
 #     from xml.etree import cElementTree as ElementTree
 # except ImportError:
 #     from xml.etree import ElementTree
 from xml.etree import ElementTree
 
-# Montellese: not needed
-# try:
-#     from unittest.mock import patch, MagicMock
-# except ImportError:
-#     from mock import patch, MagicMock
-
-# Montellese: Kodi specific problem, see https://forum.kodi.tv/showthread.php?tid=112916&pid=2914578#pid2914578
+# mediaimprot.plex patch: Kodi specific problem, see https://forum.kodi.tv/showthread.php?tid=112916&pid=2914578#pid2914578
 import datetime
 
 #fix for datatetime.strptime returns None
