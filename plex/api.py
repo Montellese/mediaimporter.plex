@@ -9,7 +9,9 @@ import datetime
 from typing import List
 
 import xbmc  # pylint: disable=import-error
+import xbmcaddon  # pylint: disable=import-error
 from xbmcgui import ListItem  # pylint: disable=import-error
+import xbmcvfs  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
 import plexapi
@@ -368,7 +370,8 @@ class Api:
     def getPlexItemAsListItem(
             plexServer: plexapi.server.PlexServer,
             plexItemId: int,
-            plexItemClass: video.Video = None
+            plexItemClass: video.Video = None,
+            allowDirectPlay: bool = False
     ) -> ListItem:
         """Get details of Plex item from the specified server by its ID and conver to xbmcgui ListItem object
 
@@ -378,6 +381,8 @@ class Api:
         :type plexItemId: int
         :param plexItemClass: Plex video object to populate
         :type plexItemClass: :class:`video.Video`, optional
+        :param allowDirectPlay: Settings definition on provider if directPlay is allowed
+        :type allowDirectPlay: bool, optional
         :return: ListItem object populated with the retreived plex item details
         :rtype: :class:`ListItem`
         """
@@ -390,14 +395,15 @@ class Api:
         if not plexItem:
             return None
 
-        return Api.toFileItem(plexServer, plexItem)
+        return Api.toFileItem(plexServer, plexItem, allowDirectPlay=allowDirectPlay)
 
     @staticmethod
     def toFileItem(
             plexServer: plexapi.server.PlexServer,
             plexItem: video.Video,
             mediaType: str = "",
-            plexLibType: str = ""
+            plexLibType: str = "",
+            allowDirectPlay: bool = False
     ) -> ListItem:
         """Validate, populate, and convert the provided plexItem into a Kodi GUI ListItem object
 
@@ -409,6 +415,8 @@ class Api:
         :type mediaType: str, optional
         :param plexLibType: Type of plex library (movie, show, season, episode, collection), defaults to ''
         :type plexLibType: str, optional
+        :param allowDirectPlay: Settings definition on provider if directPlay is allowed
+        :type allowDirectPlay: bool, optional
         :return: ListItem object populated with the retreived plex item details
         :rtype: ListItem
         """
@@ -451,7 +459,7 @@ class Api:
         item = ListItem(label=plexItem.title)
 
         # fill video details
-        Api.fillVideoInfos(plexServer, itemId, plexItem, mediaType, item)
+        Api.fillVideoInfos(plexServer, itemId, plexItem, mediaType, item, allowDirectPlay)
 
         if not item.getPath():
             log(f"failed to retrieve a path for {mediaType} item '{item.getLabel()}'", xbmc.LOGWARNING)
@@ -465,7 +473,8 @@ class Api:
             itemId: int,
             plexItem: video.Video,
             mediaType: str,
-            item: ListItem
+            item: ListItem,
+            allowDirectPlay: bool = False
     ):
         """
         Populate the provided ListItem object with existing data from plexItem
@@ -481,6 +490,8 @@ class Api:
         :type mediaType: str
         :param item: Instantiated Kodi ListItem to populate with additional details
         :type item: :class:`ListItem`
+        :param allowDirectPlay: Settings definition on provider if directPlay is allowed
+        :type allowDirectPlay: bool, optional
         """
         info = {
             'mediatype': mediaType,
@@ -665,8 +676,20 @@ class Api:
 
         if mediaPart:
             # extract the absolute / actual path and the stream URL from the selected MediaPart
-            info['path'] = mediaPart.file
-            item.setPath(plexServer.url(mediaPart.key, includeToken=True))
+            info['path'] = mediaPart.file  # path to file on disk
+
+            # determine if directPlay is enabled and possible
+            if allowDirectPlay:
+                # perform replacement in file path if configured
+                filePath = Api._mapPath(mediaPart.file)
+
+                # confirm file is accessible and store item path
+                if filePath and xbmcvfs.exists(filePath):
+                    item.setPath(filePath)
+
+            # Set streaming URL if allowDirectPlay path inaccessible or wasn't enabled
+            if not item.getPath():
+                item.setPath(plexServer.url(mediaPart.key, includeToken=True))
         elif isFolder:
             # for folders use locations for the path
             if locations:
@@ -692,3 +715,28 @@ class Api:
             artwork['fanart'] = fanart
         if artwork:
             item.setArt(artwork)
+
+    @staticmethod
+    def _mapPath(path: str) -> str:
+        """Replace and standardizes Windows UNC paths for Kodi consumption
+
+        :param path: Currenty path to process for UNC fixes
+        :type path: str
+        :return: Standardized path that Kodi can consume
+        :rtype: str
+        """
+        if not path:
+            return ''
+
+        # turn UNC paths into Kodi-specific Samba paths
+        if path.startswith('\\\\'):
+            path = path.replace('\\\\', 'smb://', 1).replace('\\\\', '\\').replace('\\', '/')
+
+        # get rid of any double backslashes
+        path = path.replace('\\\\', '\\')
+
+        # make sure paths are consistent
+        if '\\' in path:
+            path.replace('/', '\\')
+
+        return path

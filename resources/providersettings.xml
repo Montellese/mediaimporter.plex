@@ -68,6 +68,11 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="plex.allowdirectplay" type="boolean" label="32066">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
       </group>
     </category>
   </section>

@@ -58,6 +58,7 @@ from lib.settings import SynchronizationSettings
 import plex
 from plex.api import Api
 from plex.server import Server
+from plex.constants import SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY
 
 # general constants
 ITEM_REQUEST_LIMIT = 100
@@ -877,6 +878,9 @@ def execImport(handle: int, options: dict):
         log("cannot prepare provider settings", xbmc.LOGERROR)
         return
 
+    # get direct play settings from provider
+    allowDirectPlay = providerSettings.getBool(SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY)
+
     # create a Plex Media Server instance
     server = Server(mediaProvider)
     plexServer = server.PlexServer()
@@ -1007,7 +1011,13 @@ def execImport(handle: int, options: dict):
                     sectionProgress += 1
 
                     try:
-                        item = Api.toFileItem(plexServer, plexItem, mediaType, plexLibType)
+                        item = Api.toFileItem(
+                            plexServer=plexServer,
+                            plexItem=plexItem,
+                            mediaType=mediaType,
+                            plexLibType=plexLibType,
+                            allowDirectPlay=allowDirectPlay
+                        )
                         if not item:
                             continue
 

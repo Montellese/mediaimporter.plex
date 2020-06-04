@@ -13,7 +13,8 @@ from typing import List
 
 from plex.constants import (
     SETTINGS_IMPORT_SYNC_SETTINGS_HASH,
-    SETTINGS_IMPORT_LIBRARY_SECTIONS
+    SETTINGS_IMPORT_LIBRARY_SECTIONS,
+    SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY,
 )
 
 import xbmcaddon
@@ -66,10 +67,15 @@ class SynchronizationSettings:
         if not importSettings:
             raise ValueError('invalid importSettings')
 
+        # provider settings
+        directPlayAllowed = providerSettings.getBool(SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY)
+
         # import specific settings
         librarySections = importSettings.getStringList(SETTINGS_IMPORT_LIBRARY_SECTIONS)
 
         hashObject = {
+            # provider settings
+            SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY: directPlayAllowed,
             # import specific settings
             SETTINGS_IMPORT_LIBRARY_SECTIONS: librarySections,
         }
