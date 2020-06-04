@@ -377,8 +377,10 @@ class ProviderObserver:
         changedItems = []
         for (changesetType, plexItemId, plexItemClass) in changedPlexItems:
             item = None
-            if changesetType in \
-               (xbmcmediaimport.MediaImportChangesetTypeAdded, xbmcmediaimport.MediaImportChangesetTypeChanged):
+            if changesetType in (
+                    xbmcmediaimport.MediaImportChangesetTypeAdded,
+                    xbmcmediaimport.MediaImportChangesetTypeChanged
+            ):
                 # get all details for the added / changed item
                 item = self._GetItemDetails(plexItemId, plexItemClass)
                 if not item:
@@ -475,8 +477,7 @@ class ProviderObserver:
 
         itemMediaType = videoInfoTag.getMediaType()
 
-        matchingImports = \
-            [mediaImport for mediaImport in self._imports if itemMediaType in mediaImport.getMediaTypes()]
+        matchingImports = [mediaImport for mediaImport in self._imports if itemMediaType in mediaImport.getMediaTypes()]
         if not matchingImports:
             return None
 
