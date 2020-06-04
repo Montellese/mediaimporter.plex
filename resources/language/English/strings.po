@@ -164,3 +164,7 @@ msgstr ""
 msgctxt "#32065"
 msgid "Do you really want to force a full synchronization?"
 msgstr ""
+
+msgctxt "#32066"
+msgid "Allow using Direct Play"
+msgstr ""

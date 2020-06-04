@@ -2,7 +2,8 @@
 - support fast (re-)synchronization (closes #10)
 - retrieve library items in batches of 100 items
 - add a setting to force full synchronization
-- add hte library name as a tag
+- add the library name as a tag
+- support direct play (closes #12)
 
 [B]Version 0.0.6[/B]
 - adjust kodi.mediaimporter extension point to changes in Kodi

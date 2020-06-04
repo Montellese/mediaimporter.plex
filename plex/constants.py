@@ -93,6 +93,7 @@ SETTINGS_PROVIDER_USERNAME = 'plex.username'
 SETTINGS_PROVIDER_TOKEN = 'plex.token'
 SETTINGS_PROVIDER_TEST_CONNECTION = 'plex.testconnection'
 SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES = 'plex.enableexternalsubtitles'
+SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY = 'plex.allowdirectplay'
 
 # media import setting identifiers and values
 SETTINGS_IMPORT_LIBRARY_SECTIONS = 'plex.librarysections'

@@ -37,6 +37,7 @@ class ProviderObserver:
         self._imports = []
         self._mediaProvider = None
         self._server = None
+        self._settings = None
 
         # create the websocket
         self._websocket = websocket.WebSocket()
@@ -461,7 +462,12 @@ class ProviderObserver:
         :return: ListItem object populated with the details of the plex item
         :rtype: :class:`xbmc.ListItem`
         """
-        return api.Api.getPlexItemAsListItem(self._server.PlexServer(), plexItemId, plexItemClass)
+        return api.Api.getPlexItemAsListItem(
+            self._server.PlexServer(),
+            plexItemId,
+            plexItemClass,
+            allowDirectPlay=self._settings.getBool(constants.SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY)
+        )
 
     def _FindImportForItem(self, item: xbmcgui.ListItem) -> xbmcmediaimport.MediaImport:
         """Find a matching MediaImport in the imports list for the provided ListItem
@@ -503,8 +509,8 @@ class ProviderObserver:
 
         self._mediaProvider = mediaProvider
 
-        settings = self._mediaProvider.prepareSettings()
-        if not settings:
+        self._settings = self._mediaProvider.prepareSettings()
+        if not self._settings:
             raise RuntimeError('cannot prepare media provider settings')
 
         # create Plex server instance
