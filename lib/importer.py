@@ -1003,9 +1003,8 @@ def execImport(handle: int, options: dict):
                 # Update sectionProgressTotal now that search has run and totalSize has been updated
                 sectionProgressTotal = section.totalSize
 
-                plexItemsProgressTotal = len(plexItems)
-                for plexItemsProgress, plexItem in enumerate(plexItems):
-                    if xbmcmediaimport.shouldCancel(handle, plexItemsProgress, plexItemsProgressTotal):
+                for plexItem in plexItems:
+                    if xbmcmediaimport.shouldCancel(handle, sectionProgress, sectionProgressTotal):
                         return
 
                     sectionProgress += 1
