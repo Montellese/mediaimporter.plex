@@ -920,7 +920,7 @@ def execImport(handle: int, options: dict):
 
     if fastSync:
         log(f"performing fast syncronization of items viewed or updated since {str(lastSync)}")
-        lastSyncEpoch = parser.parse(lastSync).strftime('%s')
+        lastSyncEpoch = int(parser.parse(lastSync).astimezone(timezone.utc).timestamp())
         updatedFilter = {'updatedAt>': lastSyncEpoch}
         watchedFilter = {'lastViewedAt>': lastSyncEpoch}
 
