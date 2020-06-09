@@ -89,7 +89,10 @@ class Player(xbmc.Player):
         """Event handler: triggered when the player is started"""
         with self._lock:
             self._reset()
-            self._getPlayingFile()
+            try:
+                self._file = self.getPlayingFile()
+            except RuntimeError:
+                pass
 
     def onAVStarted(self):
         """Event handler: triggered when the playback actually starts"""
@@ -126,11 +129,6 @@ class Player(xbmc.Player):
         """Event handler: Triggered when playback ends. Resets player state and inherently kills the reporting loop"""
         with self._lock:
             self._playbackEnded()
-
-    def _getPlayingFile(self):
-        """Fill the playing file in the respective member variable with a lock"""
-        if self.isPlaying():
-            self._file = self.getPlayingFile()
 
     def _playbackEnded(self):
         """Sends stop state to Plex and resets the player member variables"""
@@ -274,7 +272,10 @@ class Player(xbmc.Player):
 
     def _getPlayingTime(self) -> float:
         """Gets current xbmc.Player time in miliseconds"""
-        return toMilliseconds(self.getTime())
+        try:
+            return toMilliseconds(self.getTime())
+        except RuntimeError:
+            return 0
 
     def _reset(self):
         """Resets player member variables to default"""
