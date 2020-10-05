@@ -1,3 +1,6 @@
+[B]Version 0.0.8[/B]
+-
+
 [B]Version 0.0.7[/B]
 - support fast (re-)synchronization (closes #10)
 - retrieve library items in batches of 100 items
