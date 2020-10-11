@@ -179,7 +179,9 @@ class Api:
         :return: Status of validation, whether the plex item belongs in the library or not
         :rtype: bool
         """
-        if not plexItem:
+        # ATTENTION: don't change this to "if not plexItem" because folders (e.g. collections) with no
+        #            content are considered faulty
+        if plexItem is None:
             raise ValueError('invalid plexItem')
         if not libraryType:
             raise ValueError('invalid libraryType')
@@ -562,6 +564,9 @@ class Api:
             media = plexItem.media
             roles = plexItem.roles
         elif isinstance(plexItem, library.Collections):
+            # ignore empty collections
+            if plexItem.childCount <= 0:
+                return
             isFolder = True
         elif isinstance(plexItem, video.Show):
             info.update({
