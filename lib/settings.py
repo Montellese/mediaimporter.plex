@@ -14,10 +14,117 @@ from typing import List
 from plex.constants import (
     SETTINGS_IMPORT_SYNC_SETTINGS_HASH,
     SETTINGS_IMPORT_LIBRARY_SECTIONS,
+    SETTINGS_PROVIDER_AUTHENTICATION,
+    SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL,
+    SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX,
     SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY,
+    SETTINGS_PROVIDER_URL,
+    SETTINGS_PROVIDER_USERNAME,
+    SETTINGS_PROVIDER_TOKEN,
 )
 
 import xbmcaddon
+import xbmcmediaimport
+
+class ProviderSettings:
+    @staticmethod
+    def GetUrl(obj):
+        providerSettings = ProviderSettings._getProviderSettings(obj)
+
+        url = providerSettings.getString(SETTINGS_PROVIDER_URL)
+        if not url:
+            raise RuntimeError('invalid provider without URL')
+
+        return url
+
+    @staticmethod
+    def SetUrl(obj, url):
+        if not obj:
+            raise ValueError('invalid media provider or media provider settings')
+        if not url:
+            raise ValueError('invalid url')
+
+        providerSettings = ProviderSettings._getProviderSettings(obj)
+
+        providerSettings.setString(SETTINGS_PROVIDER_URL, url)
+
+    @staticmethod
+    def GetAuthenticationMethod(obj):
+        providerSettings = ProviderSettings._getProviderSettings(obj)
+
+        authenticationMethod = providerSettings.getInt(SETTINGS_PROVIDER_AUTHENTICATION)
+        if authenticationMethod not in \
+           (SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL, SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX):
+            raise RuntimeError(f'unknown authentication method: {authenticationMethod}')
+
+        return authenticationMethod
+
+    @staticmethod
+    def SetAuthenticationMethod(obj, authenticationMethod):
+        if not obj:
+            raise ValueError('invalid media provider or media provider settings')
+        if authenticationMethod not in \
+           (SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL, SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX):
+            raise ValueError(f'unknown authentication method: {authenticationMethod}')
+
+        providerSettings = ProviderSettings._getProviderSettings(obj)
+
+        providerSettings.setInt(SETTINGS_PROVIDER_AUTHENTICATION, authenticationMethod)
+
+    @staticmethod
+    def GetUsername(obj):
+        providerSettings = ProviderSettings._getProviderSettings(obj)
+
+        username = providerSettings.getString(SETTINGS_PROVIDER_USERNAME)
+        if not username:
+            raise RuntimeError('invalid provider without username')
+
+        return username
+
+    @staticmethod
+    def SetUsername(obj, username):
+        if not obj:
+            raise ValueError('invalid media provider or media provider settings')
+        if not username:
+            raise ValueError('invalid username')
+
+        providerSettings = ProviderSettings._getProviderSettings(obj)
+
+        providerSettings.setString(SETTINGS_PROVIDER_USERNAME, username)
+
+    @staticmethod
+    def GetAccessToken(obj):
+        providerSettings = ProviderSettings._getProviderSettings(obj)
+
+        accessToken = providerSettings.getString(SETTINGS_PROVIDER_TOKEN)
+        if not accessToken:
+            raise RuntimeError('invalid provider without access token')
+
+        return accessToken
+
+    @staticmethod
+    def SetAccessToken(obj, accessToken):
+        if not obj:
+            raise ValueError('invalid media provider or media provider settings')
+        if not accessToken:
+            raise ValueError('invalid access token')
+
+        providerSettings = ProviderSettings._getProviderSettings(obj)
+
+        providerSettings.setString(SETTINGS_PROVIDER_TOKEN, accessToken)
+
+    @staticmethod
+    def _getProviderSettings(obj):
+        if not obj:
+            raise ValueError('invalid media provider or media provider settings')
+
+        if isinstance(obj, xbmcmediaimport.MediaProvider):
+            providerSettings = obj.getSettings()
+            if not providerSettings:
+                raise ValueError('invalid provider without settings')
+            return providerSettings
+
+        return obj
 
 
 class SynchronizationSettings:

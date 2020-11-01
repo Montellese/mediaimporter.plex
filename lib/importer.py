@@ -53,7 +53,7 @@ from plexapi.myplex import MyPlexAccount, MyPlexPinLogin, MyPlexResource
 from plexapi.server import PlexServer
 
 from lib.utils import getIcon, localize, log, mediaProvider2str, normalizeString
-from lib.settings import SynchronizationSettings
+from lib.settings import ProviderSettings, SynchronizationSettings
 
 import plex
 from plex.api import Api
@@ -205,7 +205,6 @@ def discoverProviderLocally(handle: int, _options: dict) -> xbmcmediaimport.Medi
 
     provider = xbmcmediaimport.MediaProvider(
         identifier=providerId,
-        basePath=baseUrl,
         friendlyName=plexServer.friendlyName,
         iconUrl=providerIconUrl,
         mediaTypes=plex.constants.SUPPORTED_MEDIA_TYPES,
@@ -217,10 +216,9 @@ def discoverProviderLocally(handle: int, _options: dict) -> xbmcmediaimport.Medi
     if not providerSettings:
         return None
 
-    providerSettings.setInt(
-        plex.constants.SETTINGS_PROVIDER_AUTHENTICATION,
-        plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
-    )
+    ProviderSettings.SetUrl(providerSettings, baseUrl)
+    ProviderSettings.SetAuthenticationMethod(providerSettings, \
+        plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL)
     providerSettings.save()
 
     return provider
@@ -322,7 +320,7 @@ def linkMyPlexAccount(handle: int, _options: dict):
         return
 
     # make sure the configured Plex Media Server is still accessible
-    serverUrl = mediaProvider.getBasePath()
+    serverUrl = ProviderSettings.GetUrl(providerSettings)
     matchingServer = None
 
     serverId = getServerId(mediaProvider.getIdentifier())
@@ -342,8 +340,8 @@ def linkMyPlexAccount(handle: int, _options: dict):
     xbmcgui.Dialog().ok(localize(32015), localize(32059, username))
 
     # change the settings
-    providerSettings.setString(plex.constants.SETTINGS_PROVIDER_USERNAME, username)
-    providerSettings.setString(plex.constants.SETTINGS_PROVIDER_TOKEN, matchingServer.accessToken)
+    ProviderSettings.SetUsername(providerSettings, username)
+    ProviderSettings.SetAccessToken(providerSettings, matchingServer.accessToken)
 
 
 def testConnection(handle: int, _options: dict):
@@ -502,7 +500,6 @@ def discoverProviderWithMyPlex(handle: int, _options: dict) -> xbmcmediaimport.M
     providerIconUrl = getIcon()
     provider = xbmcmediaimport.MediaProvider(
         providerId,
-        baseUrl,
         server.name,
         providerIconUrl,
         plex.constants.SUPPORTED_MEDIA_TYPES,
@@ -514,12 +511,11 @@ def discoverProviderWithMyPlex(handle: int, _options: dict) -> xbmcmediaimport.M
     if not providerSettings:
         return None
 
-    providerSettings.setInt(
-        plex.constants.SETTINGS_PROVIDER_AUTHENTICATION,
-        plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX
-    )
-    providerSettings.setString(plex.constants.SETTINGS_PROVIDER_USERNAME, username)
-    providerSettings.setString(plex.constants.SETTINGS_PROVIDER_TOKEN, server.accessToken)
+    ProviderSettings.SetUrl(providerSettings, baseUrl)
+    ProviderSettings.SetAuthenticationMethod(providerSettings, \
+        plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX)
+    ProviderSettings.SetUsername(providerSettings, username)
+    ProviderSettings.SetAccessToken(providerSettings, server.accessToken)
     providerSettings.save()
 
     return provider

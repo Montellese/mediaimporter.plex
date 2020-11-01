@@ -8,11 +8,11 @@
 
 from plexapi.server import PlexServer
 
+from lib.settings import ProviderSettings
+
 from plex.constants import (
     PLEX_PROTOCOL,
-    SETTINGS_PROVIDER_AUTHENTICATION,
-    SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL,
-    SETTINGS_PROVIDER_TOKEN
+    SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
 )
 
 import xbmcmediaimport  # pylint: disable=import-error
@@ -29,18 +29,19 @@ class Server:
             raise ValueError('Invalid provider')
 
         self._id = provider.getIdentifier()
-        self._url = provider.getBasePath()
 
         settings = provider.getSettings()
         if not settings:
             raise ValueError('Invalid provider without settings')
 
+        self._url = ProviderSettings.GetUrl(settings)
+
         self._localOnly = bool(
-            settings.getInt(SETTINGS_PROVIDER_AUTHENTICATION) == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
+            ProviderSettings.GetAuthenticationMethod(settings) == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
         )
         self._token = ""
         if not self._localOnly:
-            self._token = settings.getString(SETTINGS_PROVIDER_TOKEN)
+            self._token = ProviderSettings.GetAccessToken(settings)
         self._plex = None
 
     def Authenticate(self):

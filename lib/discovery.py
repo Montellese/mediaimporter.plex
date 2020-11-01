@@ -16,6 +16,7 @@ import xbmc  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
 from lib.monitor import Monitor
+from lib.settings import ProviderSettings
 from lib.utils import getIcon, log, mediaProvider2str
 
 import plex
@@ -167,7 +168,6 @@ class DiscoveryService:
 
         provider = xbmcmediaimport.MediaProvider(
             providerId,
-            server.address,
             server.name,
             providerIconUrl,
             plex.constants.SUPPORTED_MEDIA_TYPES
@@ -178,10 +178,9 @@ class DiscoveryService:
         if not providerSettings:
             return
 
-        providerSettings.setInt(
-            plex.constants.SETTINGS_PROVIDER_AUTHENTICATION,
-            plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL
-        )
+        ProviderSettings.SetUrl(providerSettings, server.address)
+        ProviderSettings.SetAuthenticationMethod(providerSettings, \
+            plex.constants.SETTINGS_PROVIDER_AUTHENTICATION_OPTION_LOCAL)
         providerSettings.save()
 
         if xbmcmediaimport.addAndActivateProvider(provider):

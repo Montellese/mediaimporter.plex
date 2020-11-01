@@ -3,6 +3,14 @@
   <section id="plex" label="32010">
     <category id="access" label="32011">
       <group id="1">
+        <setting id="plex.url" type="string">
+          <visible>false</visible>
+          <level>4</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+        </setting>
         <setting id="plex.authentication" type="integer" label="32012">
           <level>0</level>
           <default>0</default>

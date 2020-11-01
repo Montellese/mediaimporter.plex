@@ -19,6 +19,7 @@ from plexapi import library, video
 
 from plex.constants import *
 
+from lib.settings import ProviderSettings
 from lib.utils import log
 
 PLEX_LIBRARY_TYPE_MOVIE = 'movie'
@@ -87,9 +88,6 @@ class Api:
         if lhs.getIdentifier() != rhs.getIdentifier():
             return False
 
-        if lhs.getBasePath() != rhs.getBasePath():
-            return False
-
         if lhs.getFriendlyName() != rhs.getFriendlyName():
             return False
 
@@ -101,15 +99,15 @@ class Api:
         if not rhsSettings:
             return False
 
-        lhsSettingsAuthentication = lhsSettings.getInt(SETTINGS_PROVIDER_AUTHENTICATION)
-        if lhsSettingsAuthentication != rhsSettings.getInt(SETTINGS_PROVIDER_AUTHENTICATION):
+        lhsSettingsAuthentication = ProviderSettings.GetAuthenticationMethod(lhsSettings)
+        if lhsSettingsAuthentication != ProviderSettings.GetAuthenticationMethod(rhsSettings):
             return False
 
         if lhsSettingsAuthentication == SETTINGS_PROVIDER_AUTHENTICATION_OPTION_MYPLEX:
-            if lhsSettings.getString(SETTINGS_PROVIDER_USERNAME) != rhsSettings.getString(SETTINGS_PROVIDER_USERNAME):
+            if ProviderSettings.GetUsername(lhsSettings) != ProviderSettings.GetUsername(rhsSettings):
                 return False
 
-            if lhsSettings.getString(SETTINGS_PROVIDER_TOKEN) != rhsSettings.getString(SETTINGS_PROVIDER_TOKEN):
+            if ProviderSettings.GetAccessToken(lhsSettings) != ProviderSettings.GetAccessToken(rhsSettings):
                 return False
 
         return True
