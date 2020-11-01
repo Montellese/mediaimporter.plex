@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import xml
+from urllib.parse import quote_plus
 
-from plexapi import compat, log, settings, utils
+from plexapi import log, settings, utils
 from plexapi.base import PlexObject
 from plexapi.exceptions import BadRequest
 from plexapi.utils import cast
@@ -619,7 +620,7 @@ class Poster(PlexObject):
 
     def select(self):
         key = self._initpath[:-1]
-        data = '%s?url=%s' % (key, compat.quote_plus(self.ratingKey))
+        data = '%s?url=%s' % (key, quote_plus(self.ratingKey))
         try:
             self._server.query(data, method=self._server._session.put)
         except xml.etree.ElementTree.ParseError:
@@ -690,6 +691,28 @@ class Chapter(PlexObject):
         self.tag = data.attrib.get('tag')
         self.title = self.tag
         self.index = cast(int, data.attrib.get('index'))
+        self.start = cast(int, data.attrib.get('startTimeOffset'))
+        self.end = cast(int, data.attrib.get('endTimeOffset'))
+
+
+@utils.registerPlexObject
+class Marker(PlexObject):
+    """ Represents a single Marker media tag.
+
+        Attributes:
+            TAG (str): 'Marker'
+    """
+    TAG = 'Marker'
+
+    def __repr__(self):
+        name = self._clean(self.firstAttr('type'))
+        start = utils.millisecondToHumanstr(self._clean(self.firstAttr('start')))
+        end = utils.millisecondToHumanstr(self._clean(self.firstAttr('end')))
+        return '<%s:%s %s - %s>' % (self.__class__.__name__, name, start, end)
+
+    def _loadData(self, data):
+        self._data = data
+        self.type = data.attrib.get('type')
         self.start = cast(int, data.attrib.get('startTimeOffset'))
         self.end = cast(int, data.attrib.get('endTimeOffset'))
 

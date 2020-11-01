@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
+from urllib.parse import quote_plus, urlencode
 
 from plexapi import log, utils
-from plexapi.compat import quote_plus, urlencode
 from plexapi.exceptions import BadRequest, NotFound, UnknownType, Unsupported
 from plexapi.utils import tag_helper
 
@@ -54,8 +54,8 @@ class PlexObject(object):
         return '<%s>' % ':'.join([p for p in [self.__class__.__name__, uid, name] if p])
 
     def __setattr__(self, attr, value):
-        # dont overwrite an attr with None unless its a private variable
-        if value is not None or attr.startswith('_') or attr not in self.__dict__:
+        # Don't overwrite an attr with None or [] unless it's a private variable
+        if value not in [None, []] or attr.startswith('_') or attr not in self.__dict__:
             self.__dict__[attr] = value
 
     def _clean(self, value):
@@ -283,7 +283,7 @@ class PlexPartialObject(PlexObject):
     """
 
     def __eq__(self, other):
-        return other is not None and self.key == other.key
+        return other not in [None, []] and self.key == other.key
 
     def __hash__(self):
         return hash(repr(self))
@@ -324,6 +324,8 @@ class PlexPartialObject(PlexObject):
                 Playing screen to show a graphical representation of where playback
                 is. Video preview thumbnails creation is a CPU-intensive process akin
                 to transcoding the file.
+            * Generate intro video markers: Detects show intros, exposing the
+                'Skip Intro' button in clients.
         """
         key = '/%s/analyze' % self.key.lstrip('/')
         self._server.query(key, method=self._server._session.put)
@@ -596,6 +598,7 @@ class Playable(object):
                 if item is being transcoded (None otherwise).
             viewedAt (datetime): Datetime item was last viewed (history).
             playlistItemID (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items).
+            playQueueItemID (int): PlayQueue item ID (only populated for :class:`~plexapi.playlist.PlayQueue` items).
     """
 
     def _loadData(self, data):
@@ -607,6 +610,7 @@ class Playable(object):
         self.viewedAt = utils.toDatetime(data.attrib.get('viewedAt'))               # history
         self.accountID = utils.cast(int, data.attrib.get('accountID'))              # history
         self.playlistItemID = utils.cast(int, data.attrib.get('playlistItemID'))    # playlist
+        self.playQueueItemID = utils.cast(int, data.attrib.get('playQueueItemID'))  # playqueue
 
     def isFullObject(self):
         """ Retruns True if this is already a full object. A full object means all attributes

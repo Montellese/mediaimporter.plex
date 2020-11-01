@@ -1,23 +1,29 @@
 # -*- coding: utf-8 -*-
+from urllib.parse import urlencode
+from xml.etree import ElementTree
+
 import requests
-from requests.status_codes import _codes as codes
-from plexapi import BASE_HEADERS, CONFIG, TIMEOUT, X_PLEX_CONTAINER_SIZE
-from plexapi import log, logfilter, utils
+# Need these imports to populate utils.PLEXOBJECTS
+from plexapi import (BASE_HEADERS, CONFIG, TIMEOUT, X_PLEX_CONTAINER_SIZE, log,
+                     logfilter)
+from plexapi import media as _media  # noqa: F401
+from plexapi import photo as _photo  # noqa: F401
+from plexapi import playlist as _playlist  # noqa: F401
+from plexapi import utils
+from plexapi import video as _video  # noqa: F401
 from plexapi.alert import AlertListener
 from plexapi.base import PlexObject
 from plexapi.client import PlexClient
-from plexapi.compat import ElementTree, urlencode
 from plexapi.exceptions import BadRequest, NotFound, Unauthorized
-from plexapi.library import Library, Hub
-from plexapi.settings import Settings
+from plexapi.library import Hub, Library
+from plexapi.media import Conversion, Optimized
 from plexapi.playlist import Playlist
 from plexapi.playqueue import PlayQueue
+from plexapi.settings import Settings
 from plexapi.utils import cast
-from plexapi.media import Optimized, Conversion
+from requests.status_codes import _codes as codes
 
-# Need these imports to populate utils.PLEXOBJECTS
-from plexapi import (audio as _audio, video as _video,        # noqa: F401
-    photo as _photo, media as _media, playlist as _playlist)  # noqa: F401
+from plexapi import audio as _audio  # noqa: F401; noqa: F401
 
 
 class PlexServer(PlexObject):
@@ -184,6 +190,14 @@ class PlexServer(PlexObject):
         data = self.query(Account.key)
         return Account(self, data)
 
+    @property
+    def activities(self):
+        """Returns all current PMS activities."""
+        activities = []
+        for elem in self.query(Activity.key):
+            activities.append(Activity(self, elem))
+        return activities
+
     def agents(self, mediaType=None):
         """ Returns the `:class:`~plexapi.media.Agent` objects this server has available. """
         key = '/system/agents'
@@ -278,7 +292,7 @@ class PlexServer(PlexObject):
 
             Parameters:
                 item (Media or Playlist): Media or playlist to add to PlayQueue.
-                kwargs (dict): See `~plexapi.playerque.PlayQueue.create`.
+                kwargs (dict): See `~plexapi.playqueue.PlayQueue.create`.
         """
         return PlayQueue.create(self, item, **kwargs)
 
@@ -424,7 +438,7 @@ class PlexServer(PlexObject):
         log.debug('%s %s', method.__name__.upper(), url)
         headers = self._headers(**headers or {})
         response = method(url, headers=headers, timeout=timeout, **kwargs)
-        if response.status_code not in (200, 201):
+        if response.status_code not in (200, 201, 204):
             codename = codes.get(response.status_code)[0]
             errtext = response.text.replace('\n', ' ')
             message = '(%s) %s; %s %s' % (response.status_code, codename, response.url, errtext)
@@ -593,6 +607,20 @@ class Account(PlexObject):
         self.subscriptionFeatures = utils.toList(data.attrib.get('subscriptionFeatures'))
         self.subscriptionActive = cast(bool, data.attrib.get('subscriptionActive'))
         self.subscriptionState = data.attrib.get('subscriptionState')
+
+
+class Activity(PlexObject):
+    """A currently running activity on the PlexServer."""
+    key = '/activities'
+
+    def _loadData(self, data):
+        self._data = data
+        self.cancellable = cast(bool, data.attrib.get('cancellable'))
+        self.progress = cast(int, data.attrib.get('progress'))
+        self.title = data.attrib.get('title')
+        self.subtitle = data.attrib.get('subtitle')
+        self.type = data.attrib.get('type')
+        self.uuid = data.attrib.get('uuid')
 
 
 class SystemAccount(PlexObject):
