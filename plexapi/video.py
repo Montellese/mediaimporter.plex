@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
-from plexapi import media, utils
-from plexapi.exceptions import BadRequest, NotFound
-from plexapi.base import Playable, PlexPartialObject
-from plexapi.compat import quote_plus, urlencode
 import os
+from urllib.parse import quote_plus, urlencode
+
+from plexapi import media, utils, settings, library
+from plexapi.base import Playable, PlexPartialObject
+from plexapi.exceptions import BadRequest, NotFound
 
 
 class Video(PlexPartialObject):
     """ Base class for all video objects including :class:`~plexapi.video.Movie`,
         :class:`~plexapi.video.Show`, :class:`~plexapi.video.Season`,
-        :class:`~plexapi.video.Episode`.
+        :class:`~plexapi.video.Episode`, :class:`~plexapi.video.Clip`.
 
         Attributes:
             addedAt (datetime): Datetime this item was added to the library.
+            fields (list): List of :class:`~plexapi.media.Field`.
             key (str): API URL (/library/metadata/<ratingkey>).
             lastViewedAt (datetime): Datetime item was last accessed.
             librarySectionID (int): :class:`~plexapi.library.LibrarySection` ID.
@@ -32,10 +34,11 @@ class Video(PlexPartialObject):
         self._data = data
         self.listType = 'video'
         self.addedAt = utils.toDatetime(data.attrib.get('addedAt'))
+        self.art = data.attrib.get('art')
+        self.fields = self.findItems(data, etag='Field')
         self.key = data.attrib.get('key', '')
         self.lastViewedAt = utils.toDatetime(data.attrib.get('lastViewedAt'))
         self.librarySectionID = data.attrib.get('librarySectionID')
-        self.librarySectionTitle = data.attrib.get('librarySectionTitle')  # mediaimporter.plex patch
         self.ratingKey = utils.cast(int, data.attrib.get('ratingKey'))
         self.summary = data.attrib.get('summary')
         self.thumb = data.attrib.get('thumb')
@@ -126,8 +129,9 @@ class Video(PlexPartialObject):
                  policyValue="", policyUnwatched=0, videoQuality=None, deviceProfile=None):
         """ Optimize item
 
-            locationID (int): -1 in folder with orginal items
-                               2 library path
+            locationID (int): -1 in folder with original items
+                               2 library path id
+                                 library path id is found in library.locations[i].id
 
             target (str): custom quality name.
                           if none provided use "Custom: {deviceProfile}"
@@ -156,6 +160,13 @@ class Video(PlexPartialObject):
 
         if targetTagID not in tagIDs and (deviceProfile is None or videoQuality is None):
             raise BadRequest('Unexpected or missing quality profile.')
+
+        libraryLocationIDs = [location.id for location in self.section()._locations()]
+        libraryLocationIDs.append(-1)
+
+        if locationID not in libraryLocationIDs:
+            raise BadRequest('Unexpected library path ID. %s not in %s' %
+                             (locationID, libraryLocationIDs))
 
         if isinstance(targetTagID, str):
             tagIndex = tagKeys.index(targetTagID)
@@ -390,6 +401,10 @@ class Show(Video):
     TYPE = 'show'
     METADATA_TYPE = 'episode'
 
+    _include = ('?checkFiles=1&includeExtras=1&includeRelated=1'
+                '&includeOnDeck=1&includeChapters=1&includePopularLeaves=1'
+                '&includeMarkers=1&includeConcerts=1&includePreferences=1')
+
     def __iter__(self):
         for season in self.seasons():
             yield season
@@ -399,6 +414,7 @@ class Show(Video):
         Video._loadData(self, data)
         # fix key if loaded from search
         self.key = self.key.replace('/children', '')
+        self._details_key = self.key + self._include
         self.art = data.attrib.get('art')
         self.banner = data.attrib.get('banner')
         self.childCount = utils.cast(int, data.attrib.get('childCount'))
@@ -430,6 +446,54 @@ class Show(Video):
     def isWatched(self):
         """ Returns True if this show is fully watched. """
         return bool(self.viewedLeafCount == self.leafCount)
+
+    def preferences(self):
+        """ Returns a list of :class:`~plexapi.settings.Preferences` objects. """
+        items = []
+        data = self._server.query(self._details_key)
+        for item in data.iter('Preferences'):
+            for elem in item:
+                setting = settings.Preferences(data=elem, server=self._server)
+                setting._initpath = self.key
+                items.append(setting)
+
+        return items
+
+    def editAdvanced(self, **kwargs):
+        """ Edit a show's advanced settings. """
+        data = {}
+        key = '%s/prefs?' % self.key
+        preferences = {pref.id: list(pref.enumValues.keys()) for pref in self.preferences()}
+        for settingID, value in kwargs.items():
+            enumValues = preferences.get(settingID)
+            if value in enumValues:
+                data[settingID] = value
+            else:
+                raise NotFound('%s not found in %s' % (value, enumValues))
+        url = key + urlencode(data)
+        self._server.query(url, method=self._server._session.put)
+
+    def defaultAdvanced(self):
+        """ Edit all of show's advanced settings to default. """
+        data = {}
+        key = '%s/prefs?' % self.key
+        for preference in self.preferences():
+            data[preference.id] = preference.default
+        url = key + urlencode(data)
+        self._server.query(url, method=self._server._session.put)
+
+    def hubs(self):
+        """ Returns a list of :class:`~plexapi.library.Hub` objects. """
+        data = self._server.query(self._details_key)
+        for item in data.iter('Related'):
+            return self.findItems(item, library.Hub)
+
+    def onDeck(self):
+        """ Returns shows On Deck :class:`~plexapi.video.Video` object.
+            If show is unwatched, return will likely be the first episode.
+        """
+        data = self._server.query(self._details_key)
+        return self.findItems([item for item in data.iter('OnDeck')][0])[0]
 
     def seasons(self, **kwargs):
         """ Returns a list of :class:`~plexapi.video.Season` objects. """
@@ -645,7 +709,7 @@ class Episode(Playable, Video):
 
     _include = ('?checkFiles=1&includeExtras=1&includeRelated=1'
                 '&includeOnDeck=1&includeChapters=1&includePopularLeaves=1'
-                '&includeConcerts=1&includePreferences=1')
+                '&includeMarkers=1&includeConcerts=1&includePreferences=1')
 
     def _loadData(self, data):
         """ Load attribute values from Plex XML response. """
@@ -681,6 +745,7 @@ class Episode(Playable, Video):
         self.labels = self.findItems(data, media.Label)
         self.collections = self.findItems(data, media.Collection)
         self.chapters = self.findItems(data, media.Chapter)
+        self.markers = self.findItems(data, media.Marker)
 
     def __repr__(self):
         return '<%s>' % ':'.join([p for p in [
@@ -712,6 +777,13 @@ class Episode(Playable, Video):
         """ Returns the s00e00 string containing the season and episode. """
         return 's%se%s' % (str(self.seasonNumber).zfill(2), str(self.index).zfill(2))
 
+    @property
+    def hasIntroMarker(self):
+        """ Returns True if this episode has an intro marker in the xml. """
+        if not self.isFullObject():
+            self.reload()
+        return any(marker.type == 'intro' for marker in self.markers)
+
     def season(self):
         """" Return this episodes :func:`~plexapi.video.Season`.. """
         return self.fetchItem(self.parentKey)
@@ -727,24 +799,38 @@ class Episode(Playable, Video):
 
 @utils.registerPlexObject
 class Clip(Playable, Video):
-    """ Represents a single Clip."""
+    """Represents a single Clip.
+
+    Attributes:
+        TAG (str): 'Video'
+        TYPE (str): 'clip'
+        duration (int): Duration of movie in milliseconds.
+        extraType (int): Unknown
+        guid: Plex GUID (com.plexapp.agents.imdb://tt4302938?lang=en).
+        index (int): Plex index (?)
+        originallyAvailableAt (datetime): Datetime movie was released.
+        subtype (str): Type of clip
+        viewOffset (int): View offset in milliseconds.
+    """
 
     TAG = 'Video'
     TYPE = 'clip'
     METADATA_TYPE = 'clip'
 
     def _loadData(self, data):
-        self._data = data
-        self.addedAt = data.attrib.get('addedAt')
-        self.duration = data.attrib.get('duration')
+        """Load attribute values from Plex XML response."""
+        Video._loadData(self, data)
+        Playable._loadData(self, data)
+        self.duration = utils.cast(int, data.attrib.get('duration'))
+        self.extraType = utils.cast(int, data.attrib.get('extraType'))
         self.guid = data.attrib.get('guid')
-        self.key = data.attrib.get('key')
+        self.index = utils.cast(int, data.attrib.get('index'))
         self.originallyAvailableAt = data.attrib.get('originallyAvailableAt')
-        self.ratingKey = data.attrib.get('ratingKey')
-        self.skipDetails = utils.cast(int, data.attrib.get('skipDetails'))
         self.subtype = data.attrib.get('subtype')
-        self.thumb = data.attrib.get('thumb')
-        self.thumbAspectRatio = data.attrib.get('thumbAspectRatio')
-        self.title = data.attrib.get('title')
-        self.type = data.attrib.get('type')
-        self.year = data.attrib.get('year')
+        self.viewOffset = utils.cast(int, data.attrib.get('viewOffset', 0))
+
+    def section(self):
+        """Return the :class:`~plexapi.library.LibrarySection` this item belongs to."""
+        # Clip payloads currently do not contain 'librarySectionID'.
+        # Return None to avoid unnecessary attribute lookup attempts.
+        return None

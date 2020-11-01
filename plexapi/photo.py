@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+from urllib.parse import quote_plus
+
 from plexapi import media, utils
-from plexapi.base import PlexPartialObject
-from plexapi.exceptions import NotFound, BadRequest
-from plexapi.compat import quote_plus
+from plexapi.base import Playable, PlexPartialObject
+from plexapi.exceptions import BadRequest, NotFound
 
 
 @utils.registerPlexObject
@@ -15,6 +16,7 @@ class Photoalbum(PlexPartialObject):
             addedAt (datetime): Datetime this item was added to the library.
             art (str): Photo art (/library/metadata/<ratingkey>/art/<artid>)
             composite (str): Unknown
+            fields (list): List of :class:`~plexapi.media.Field`.
             guid (str): Unknown (unique ID)
             index (sting): Index number of this album.
             key (str): API URL (/library/metadata/<ratingkey>).
@@ -36,6 +38,7 @@ class Photoalbum(PlexPartialObject):
         self.addedAt = utils.toDatetime(data.attrib.get('addedAt'))
         self.art = data.attrib.get('art')
         self.composite = data.attrib.get('composite')
+        self.fields = self.findItems(data, etag='Field')
         self.guid = data.attrib.get('guid')
         self.index = utils.cast(int, data.attrib.get('index'))
         self.key = data.attrib.get('key')
@@ -71,17 +74,49 @@ class Photoalbum(PlexPartialObject):
                 return photo
         raise NotFound('Unable to find photo: %s' % title)
 
+    def iterParts(self):
+        """ Iterates over the parts of this media item. """
+        for album in self.albums():
+            for photo in album.photos():
+                for part in photo.iterParts():
+                    yield part
+
+    def download(self, savepath=None, keep_original_name=False, showstatus=False):
+        """ Download photo files to specified directory.
+
+            Parameters:
+                savepath (str): Defaults to current working dir.
+                keep_original_name (bool): True to keep the original file name otherwise
+                    a friendlier is generated.
+                showstatus(bool): Display a progressbar.
+        """
+        filepaths = []
+        locations = [i for i in self.iterParts() if i]
+        for location in locations:
+            name = location.file
+            if not keep_original_name:
+                title = self.title.replace(' ', '.')
+                name = '%s.%s' % (title, location.container)
+            url = self._server.url('%s?download=1' % location.key)
+            filepath = utils.download(url, self._server._token, filename=name, showstatus=showstatus,
+                                      savepath=savepath, session=self._server._session)
+            if filepath:
+                filepaths.append(filepath)
+        return filepaths
+
 
 @utils.registerPlexObject
-class Photo(PlexPartialObject):
+class Photo(PlexPartialObject, Playable):
     """ Represents a single photo.
 
         Attributes:
             TAG (str): 'Photo'
             TYPE (str): 'photo'
             addedAt (datetime): Datetime this item was added to the library.
+            fields (list): List of :class:`~plexapi.media.Field`.
             index (sting): Index number of this photo.
             key (str): API URL (/library/metadata/<ratingkey>).
+            librarySectionID (int): :class:`~plexapi.library.LibrarySection` ID.
             listType (str): Hardcoded as 'photo' (useful for search filters).
             media (TYPE): Unknown
             originallyAvailableAt (datetime): Datetime this photo was added to Plex.
@@ -101,10 +136,13 @@ class Photo(PlexPartialObject):
 
     def _loadData(self, data):
         """ Load attribute values from Plex XML response. """
+        Playable._loadData(self, data)
         self.listType = 'photo'
         self.addedAt = utils.toDatetime(data.attrib.get('addedAt'))
+        self.fields = self.findItems(data, etag='Field')
         self.index = utils.cast(int, data.attrib.get('index'))
         self.key = data.attrib.get('key')
+        self.librarySectionID = data.attrib.get('librarySectionID')
         self.originallyAvailableAt = utils.toDatetime(
             data.attrib.get('originallyAvailableAt'), '%Y-%m-%d')
         self.parentKey = data.attrib.get('parentKey')
@@ -119,6 +157,12 @@ class Photo(PlexPartialObject):
         self.media = self.findItems(data, media.Media)
         self.tag = self.findItems(data, media.Tag)
 
+    @property
+    def thumbUrl(self):
+        """Return URL for the thumbnail image."""
+        key = self.firstAttr('thumb', 'parentThumb', 'granparentThumb')
+        return self._server.url(key, includeToken=True) if key else None
+
     def photoalbum(self):
         """ Return this photo's :class:`~plexapi.photo.Photoalbum`. """
         return self.fetchItem(self.parentKey)
@@ -131,6 +175,12 @@ class Photo(PlexPartialObject):
             return self._server.library.sectionByID(self.photoalbum().librarySectionID)
         else:
             raise BadRequest('Unable to get section for photo, can`t find librarySectionID')
+
+    def iterParts(self):
+        """ Iterates over the parts of this media item. """
+        for item in self.media:
+            for part in item.parts:
+                yield part
 
     def sync(self, resolution, client=None, clientId=None, limit=None, title=None):
         """ Add current photo as sync item for specified device.
@@ -167,3 +217,26 @@ class Photo(PlexPartialObject):
         sync_item.mediaSettings = MediaSettings.createPhoto(resolution)
 
         return myplex.sync(sync_item, client=client, clientId=clientId)
+
+    def download(self, savepath=None, keep_original_name=False, showstatus=False):
+        """ Download photo files to specified directory.
+
+            Parameters:
+                savepath (str): Defaults to current working dir.
+                keep_original_name (bool): True to keep the original file name otherwise
+                    a friendlier is generated.
+                showstatus(bool): Display a progressbar.
+        """
+        filepaths = []
+        locations = [i for i in self.iterParts() if i]
+        for location in locations:
+            name = location.file
+            if not keep_original_name:
+                title = self.title.replace(' ', '.')
+                name = '%s.%s' % (title, location.container)
+            url = self._server.url('%s?download=1' % location.key)
+            filepath = utils.download(url, self._server._token, filename=name, showstatus=showstatus,
+                                      savepath=savepath, session=self._server._session)
+            if filepath:
+                filepaths.append(filepath)
+        return filepaths

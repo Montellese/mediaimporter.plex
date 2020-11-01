@@ -2,14 +2,14 @@
 import copy
 import threading
 import time
+from xml.etree import ElementTree
 
 import requests
 from plexapi import (BASE_HEADERS, CONFIG, TIMEOUT, X_PLEX_ENABLE_FAST_CONNECT,
                      X_PLEX_IDENTIFIER, log, logfilter, utils)
 from plexapi.base import PlexObject
-from plexapi.exceptions import BadRequest, NotFound, Unauthorized
 from plexapi.client import PlexClient
-from plexapi.compat import ElementTree
+from plexapi.exceptions import BadRequest, NotFound, Unauthorized
 from plexapi.library import LibrarySection
 from plexapi.server import PlexServer
 from plexapi.sonos import PlexSonosClient
@@ -139,7 +139,7 @@ class MyPlexAccount(PlexObject):
 
         roles = data.find('roles')
         self.roles = []
-        if roles:
+        if roles is not None:
             for role in roles.iter('role'):
                 self.roles.append(role.attrib.get('id'))
 
@@ -217,7 +217,7 @@ class MyPlexAccount(PlexObject):
             return []
 
         t = time.time()
-        if t - self._sonos_cache_timestamp > 60:
+        if t - self._sonos_cache_timestamp > 5:
             self._sonos_cache_timestamp = t
             data = self.query('https://sonos.plex.tv/resources')
             self._sonos_cache = [PlexSonosClient(self, elem) for elem in data]
@@ -225,10 +225,10 @@ class MyPlexAccount(PlexObject):
         return self._sonos_cache
 
     def sonos_speaker(self, name):
-        return [x for x in self.sonos_speakers() if x.title == name][0]
+        return next((x for x in self.sonos_speakers() if x.title.split("+")[0].strip() == name), None)
 
     def sonos_speaker_by_id(self, identifier):
-        return [x for x in self.sonos_speakers() if x.machineIdentifier == identifier][0]
+        return next((x for x in self.sonos_speakers() if x.machineIdentifier.startswith(identifier)), None)
 
     def inviteFriend(self, user, server, sections=None, allowSync=False, allowCameraUpload=False,
                      allowChannels=False, filterMovies=None, filterTelevision=None, filterMusic=None):
@@ -1124,7 +1124,6 @@ class MyPlexPinLogin(object):
         self.finished = False
         self.expired = False
         self.token = None
-        self.pin = ""  # mediaimport.plex patch: Can't instantiate with this as None
         self.pin = self._getPin()
 
     def run(self, callback=None, timeout=None):

@@ -3,6 +3,7 @@
 - show hint after using force full synchronization
 - support actor thumbnails
 - use explicit setters in InfoTagVideo instead of ListItem.setInfo()
+- bump plexapi from 3.5.0 to 4.2.0
 
 [B]Version 0.0.8[/B]
 - properly handle empty movie collections (fixes #25)
