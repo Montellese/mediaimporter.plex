@@ -837,10 +837,6 @@ def execImport(handle: int, options: dict):
     :param options: Options/parameters passed in with the call, required mediatypes or mediatypes[]
     :type options: dict
     """
-    if 'path' not in options:
-        log("cannot execute 'import' without path", xbmc.LOGERROR)
-        return
-
     # parse all necessary options
     mediaTypes = mediaTypesFromOptions(options)
     if not mediaTypes:

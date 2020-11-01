@@ -1,6 +1,7 @@
 [B]Version 0.0.8[/B]
 - properly handle empty movie collections (fixes #25)
 - use add-on's icon for detected media providers
+- adjust add-on to changes in Kodi's Python API
 
 [B]Version 0.0.7[/B]
 - support fast (re-)synchronization (closes #10)

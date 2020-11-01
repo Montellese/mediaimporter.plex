@@ -119,7 +119,8 @@ class ProviderObserver:
 
         return [
             i for i, x in enumerate(self._imports)
-            if x.getPath() == mediaImport.getPath() and x.getMediaTypes() == mediaImport.getMediaTypes()
+            if x.getProvider().getIdentifier() == mediaImport.getProvider().getIdentifier() and \
+               x.getMediaTypes() == mediaImport.getMediaTypes()
         ]
 
     def _ProcessActions(self):
