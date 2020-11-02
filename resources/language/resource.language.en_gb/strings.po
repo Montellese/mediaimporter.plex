@@ -108,6 +108,30 @@ msgctxt "#32025"
 msgid "Change Plex Media Server address"
 msgstr ""
 
+msgctxt "#32026"
+msgid "Playback"
+msgstr ""
+
+msgctxt "#32027"
+msgid "Skip Intros (requires Plex Pass)"
+msgstr ""
+
+msgctxt "#32028"
+msgid "Never"
+msgstr ""
+
+msgctxt "#32029"
+msgid "Ask"
+msgstr ""
+
+msgctxt "#32030"
+msgid "Always"
+msgstr ""
+
+msgctxt "#32031"
+msgid "Skip Intro"
+msgstr ""
+
 #. Titel of the dialog to select the authentication method
 msgctxt "#32050"
 msgid "Plex Media Server authentication method"

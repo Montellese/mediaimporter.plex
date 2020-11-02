@@ -2,6 +2,7 @@
 - bump plexapi from 3.5.0 to 4.6.0
 - map GUIDs to Kodi's unique IDs
 - manually perform an optimized reload of media item metadata
+- support skipping detected episode intros (closes #24)
 
 [B]Version 0.0.9[/B]
 - replace custom PMS network discovery with plexapi.gdm.GDM

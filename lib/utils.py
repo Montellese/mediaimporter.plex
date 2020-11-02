@@ -111,6 +111,17 @@ def toMilliseconds(seconds: float) -> int:
     return int(seconds) * 1000
 
 
+def milliToSeconds(milliseconds: float) -> float:
+    """Helper function to convert milliseconds(float) to seconds(float)
+
+    :param milliseconds: Time in milliseconds
+    :type milliseconds: float
+    :return: Time in seconds
+    :rtype: float
+    """
+    return float(milliseconds) / 1000
+
+
 def mediaProvider2str(mediaProvider: xbmcmediaimport.MediaProvider):
     """Helper function to convert a MediaProvider object into a string for logging
 
@@ -146,3 +157,12 @@ def getIcon():
         pass
 
     return iconPath
+
+def getAddonPath():
+    addonPath = xbmc.translatePath(__addon__.getAddonInfo('path'))
+    try:
+        addonPath = addonPath.decode('utf-8')
+    except AttributeError:
+        pass
+
+    return addonPath

@@ -9,7 +9,7 @@
         </setting>
       </group>
     </category>
-    <category id="plex" label="32021">
+    <category id="library" label="32021">
       <group id="1">
         <setting id="plex.librarysections" type="list[string]" label="32020">
           <level>0</level>
@@ -28,6 +28,26 @@
           <constraints>
             <allowempty>true</allowempty>
           </constraints>
+        </setting>
+      </group>
+    </category>
+    <category id="player" label="32026">
+      <group id="1">
+        <setting id="plex.skipintro" type="string" label="32027">
+          <level>0</level>
+          <default>never</default>
+          <constraints>
+            <options>
+              <option label="32028">never</option>
+              <option label="32029">ask</option>
+              <option label="32030">always</option>
+            </options>
+          </constraints>
+          <control type="list" format="string" />
+          <dependencies>
+            <dependency type="visible" on="property" name="HasMediaType">episode</dependency>
+          </dependencies>
+          <control type="list" format="string" />
         </setting>
       </group>
     </category>
