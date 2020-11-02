@@ -9,8 +9,10 @@ import time
 import threading
 
 import xbmc  # pylint: disable=import-error
+from xbmcaddon import Settings  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
+from plexapi.video import Episode
 from plexapi.server import PlexServer
 from plex.api import Api
 from plex.constants import (
@@ -18,12 +20,18 @@ from plex.constants import (
     PLEX_PLAYER_PLAYING,
     PLEX_PLAYER_PAUSED,
     PLEX_PLAYER_STOPPED,
+    SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO,
+    SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_ASK,
+    SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_ALWAYS,
+    SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_NEVER,
     SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES
 )
 from plex.server import Server
+from plex.skip_intro_dialog import SkipIntroDialog
 
-from lib.utils import log, mediaProvider2str, toMilliseconds, localize
+from lib.utils import log, mediaProvider2str, milliToSeconds, toMilliseconds, localize
 
+PROCESSING_INTEREVAL = 1  # seconds
 REPORTING_INTERVAL = 5  # seconds
 
 SUBTITLE_UNKNOWN = localize(32064).decode()
@@ -37,14 +45,19 @@ class Player(xbmc.Player):
 
         self._providers = {}
         self._lock = threading.Lock()
+        self._lastProcessing = 0
 
         self._state = {'playbacktime': 0, 'state': None, 'lastreport': 0}
         self._duration = None
+        self._introMarker = None
+        self._skipIntroSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_NEVER
+        self._skipIntroDialog = None
 
         self._file = None
         self._item = None
         self._itemId = None
         self._mediaProvider = None
+        self._mediaImport = None
 
     def AddProvider(self, mediaProvider: xbmcmediaimport.MediaProvider):
         """Adds a media provider to the player
@@ -74,12 +87,19 @@ class Player(xbmc.Player):
         """Report the state of the player to the Plex server, periodically called by observer thread"""
         with self._lock:
             if self.isPlaying():
+                currentTime = time.time()
+                if (currentTime - self._lastProcessing) < PROCESSING_INTEREVAL:
+                    return
+
+                self._processPlayback()
+                self._lastProcessing = currentTime
+
                 lastreport = self._state.get('lastreport')
 
                 if not lastreport:
                     return
 
-                if (time.time() - lastreport) < REPORTING_INTERVAL:
+                if (currentTime - lastreport) < REPORTING_INTERVAL:
                     return
 
                 if self._item:
@@ -161,7 +181,10 @@ class Player(xbmc.Player):
                 xbmc.LOGWARNING
             )
             return
+
         self._mediaProvider = self._providers[mediaProviderId]
+        if not self._mediaProvider:
+            return
 
         videoInfoTag = self.getVideoInfoTag()
         if not videoInfoTag:
@@ -180,35 +203,75 @@ class Player(xbmc.Player):
 
         self._itemId = int(itemId)
 
-        if self._mediaProvider:
-            # save item
-            plexServer = Server(self._mediaProvider)
-            self._item = Api.getPlexItemDetails(
-                plexServer.PlexServer(),
-                self._itemId,
-                Api.getPlexMediaClassFromMediaType(videoInfoTag.getMediaType())
+        # save item
+        plexServer = Server(self._mediaProvider)
+        self._item = Api.getPlexItemDetails(
+            plexServer.PlexServer(),
+            self._itemId,
+            Api.getPlexMediaClassFromMediaType(videoInfoTag.getMediaType())
+        )
+        if not self._item:
+            log(
+                (
+                    f"failed to retrieve details for item {self._itemId} ({self._file}) "
+                    f"playing from {mediaProvider2str(self._mediaProvider)}"
+                ),
+                xbmc.LOGWARNING
             )
-            self._duration = toMilliseconds(self.getTotalTime())
-
-            # register settings
-            settings = self._mediaProvider.prepareSettings()
-            if not settings:
-                log(
-                    (
-                        f"failed to load settings for {self._item.title} ({self._file}) "
-                        f"playing from {mediaProvider2str(self._mediaProvider)}"
-                    ),
-                    xbmc.LOGWARNING
-                )
-                self._reset()
-                return
-
-            # load external subtitles
-            if settings.getBool(SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES):
-                self._addExternalSubtitles(plexServer.PlexServer())
-
-        else:
             self._reset()
+            return
+
+        self._duration = toMilliseconds(self.getTotalTime())
+
+        # handle any provider specific settings
+        self._handleProviderSettings(plexServer.PlexServer())
+
+        # get the matching media import
+        self._mediaImport = self._mediaProvider.getImportByMediaType(videoInfoTag.getMediaType())
+        if self._mediaImport:
+            # handle any import specific settings
+            self._handleImportSettings()
+        else:
+            log(
+                (
+                    f"failed to determine import for {self._item.title} ({self._file}) "
+                    f"playing from {mediaProvider2str(self._mediaProvider)}"
+                ),
+                xbmc.LOGWARNING
+            )
+
+    def _handleProviderSettings(self, plexServer: PlexServer):
+        # load provider settings
+        providerSettings = self._mediaProvider.prepareSettings()
+        if not providerSettings:
+            log(
+                (
+                    f"failed to load provider settings for {self._item.title} ({self._file}) "
+                    f"playing from {mediaProvider2str(self._mediaProvider)}"
+                ),
+                xbmc.LOGWARNING
+            )
+            return
+
+        # load external subtitles
+        if providerSettings.getBool(SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES):
+            self._addExternalSubtitles(plexServer)
+
+    def _handleImportSettings(self):
+        # load import settings
+        importSettings = self._mediaImport.prepareSettings()
+        if not importSettings:
+            log(
+                (
+                    f"failed to load import settings for {self._item.title} ({self._file}) "
+                    f"playing from {mediaProvider2str(self._mediaProvider)}"
+                ),
+                xbmc.LOGWARNING
+            )
+            return
+
+        # try to get an intro marker
+        self._getIntroMarker(importSettings)
 
     def _addExternalSubtitles(self, plexServer: PlexServer):
         """Add external subtitles to the player
@@ -238,6 +301,81 @@ class Player(xbmc.Player):
                     ),
                     xbmc.LOGINFO
                 )
+
+    def _getIntroMarker(self, importSettings: Settings):
+        if not isinstance(self._item, Episode) or not self._item.hasIntroMarker:
+            return
+
+        # handle skipping intros
+        self._skipIntroSetting = importSettings.getString(SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO)
+        if self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_NEVER:
+            log(
+                (
+                    f"ignoring available intro markers for {self._item.title} ({self._file}) "
+                    f"playing from {mediaProvider2str(self._mediaProvider)}"
+                )
+            )
+            return
+
+        # find all intro markers
+        introMarkers = [marker for marker in self._item.markers if marker.type == 'intro']
+        if len(introMarkers) != 1:
+            log(
+                (
+                    f"bad number of intro markers for {self._item.title} ({self._file}) "
+                    f"playing from {mediaProvider2str(self._mediaProvider)}"
+                ),
+                xbmc.LOGWARNING
+            )
+            return
+
+        self._introMarker = introMarkers[0]
+        log((
+            f"found intro marker {self._introMarker} for {self._item.title} ({self._file}) "
+            f"playing from {mediaProvider2str(self._mediaProvider)}"
+        ))
+
+    def _processPlayback(self):
+        self._processIntroMarker(playbackTime=self._getPlayingTime())
+
+    def _processIntroMarker(self, playbackTime: float):
+        # nothing to do if there are no intro markers
+        if not self._introMarker:
+            return
+
+        markerStart = self._introMarker.start
+        markerEnd = self._introMarker.end
+
+        # nothing to do if the current playback time is outside of the intro marker
+        if markerStart > playbackTime or markerEnd < playbackTime:
+            # close the skip intro dialog if it is still open
+            if self._skipIntroDialog:
+                self._skipIntroDialog.close()
+                self._skipIntroDialog = None
+            return
+
+        skipIntro = False
+        if self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_ALWAYS:
+            skipIntro = True
+        elif self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_ASK:
+            if not self._skipIntroDialog:
+                log(
+                    (
+                        f"asking to skip intro starting at {markerStart}ms to {markerEnd}ms for "
+                        f"{self._item.title} ({self._file})"
+                    )
+                )
+                # create and open the skip intro dialog
+                self._skipIntroDialog = SkipIntroDialog.Create()
+                self._skipIntroDialog.show()
+
+            # check if skipping the intro has been confirmed
+            if self._skipIntroDialog.skipIntro():
+                skipIntro = True
+
+        if skipIntro:
+            log(f"skipping intro starting at {markerStart}ms to {markerEnd}ms for {self._item.title} ({self._file})")
+            self.seekTime(milliToSeconds(markerEnd))
 
     def _syncPlaybackState(self, state: str = None, playbackTime: float = None):
         """Syncs last available state and playback time then publishes to PMS
@@ -284,6 +422,11 @@ class Player(xbmc.Player):
         self._item = None
         self._itemId = None
         self._mediaProvider = None
+        self._mediaImport = None
+        self._skipIntroDialog = None
+        self._skipIntroSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_NEVER
+        self._introMarker = None
         self._duration = None
         # Player last known state
         self._state = {'playbackTime': 0, 'state': None, 'lastreport': 0}
+        self._lastProcessing = 0

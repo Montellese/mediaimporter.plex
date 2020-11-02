@@ -100,6 +100,30 @@ msgctxt "#32023"
 msgid "Direct Play Settings"
 msgstr ""
 
+msgctxt "#32024"
+msgid "Playback"
+msgstr ""
+
+msgctxt "#32025"
+msgid "Skip Intros (requires Plex Pass)"
+msgstr ""
+
+msgctxt "#32026"
+msgid "Never"
+msgstr ""
+
+msgctxt "#32027"
+msgid "Ask"
+msgstr ""
+
+msgctxt "#32028"
+msgid "Always"
+msgstr ""
+
+msgctxt "#32029"
+msgid "Skip Intro"
+msgstr ""
+
 #. Titel of the dialog to select the authentication method
 msgctxt "#32050"
 msgid "Plex Media Server authentication method"
