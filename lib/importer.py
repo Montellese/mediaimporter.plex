@@ -920,9 +920,6 @@ def execImport(handle: int, options: dict):
 
     if fastSync:
         log(f"performing fast syncronization of items viewed or updated since {str(lastSync)}")
-        lastSyncEpoch = int(parser.parse(lastSync).astimezone(timezone.utc).timestamp())
-        updatedFilter = {'updatedAt>': lastSyncEpoch}
-        watchedFilter = {'lastViewedAt>': lastSyncEpoch}
 
     # loop over all media types to be imported
     progressTotal = len(mediaTypes)
@@ -967,6 +964,16 @@ def execImport(handle: int, options: dict):
 
                 try:
                     if fastSync:
+                        lastSyncEpoch = int(parser.parse(lastSync).astimezone(timezone.utc).timestamp())
+                        prefix = ''
+                        if mediaType in (xbmcmediaimport.MediaTypeTvShow, xbmcmediaimport.MediaTypeEpisode):
+                            prefix = Api.getPlexMediaType(mediaType)['libtype'] + '.'
+                        elif mediaType == xbmcmediaimport.MediaTypeSeason:
+                            prefix = Api.getPlexMediaType(xbmcmediaimport.MediaTypeEpisode)['libtype'] + '.'
+
+                        updatedFilter = {prefix + 'updatedAt>': lastSyncEpoch}
+                        watchedFilter = {prefix + 'lastViewedAt>': lastSyncEpoch}
+
                         updatedPlexItems = section.search(
                             libtype=plexLibType,
                             container_start=sectionProgress,
@@ -974,7 +981,7 @@ def execImport(handle: int, options: dict):
                             maxresults=maxResults,
                             **updatedFilter
                         )
-                        log(f"discovered {len(updatedPlexItems)} updated items from {mediaProvider2str(mediaProvider)}")
+                        log(f"discovered {len(updatedPlexItems)} updated {mediaType} items from {mediaProvider2str(mediaProvider)}")
                         watchedPlexItems = section.search(
                             libtype=plexLibType,
                             container_start=sectionProgress,
@@ -982,7 +989,7 @@ def execImport(handle: int, options: dict):
                             maxresults=maxResults,
                             **watchedFilter
                         )
-                        log(f"discovered {len(watchedPlexItems)} new watched items from {mediaProvider2str(mediaProvider)}")
+                        log(f"discovered {len(watchedPlexItems)} newly watched {mediaType} items from {mediaProvider2str(mediaProvider)}")
 
                         plexItems = updatedPlexItems
                         plexItems.extend(
