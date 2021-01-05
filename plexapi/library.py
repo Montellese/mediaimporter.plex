@@ -497,7 +497,17 @@ class LibrarySection(PlexObject):
                         field._initpath = metaTypeKey
                         fieldType = [_ for _ in fieldTypes if _.type == field.type]
                         field.operators = fieldType[0].operators
-                    items += fields
+
+                        # mediaimporter.plex patch: add updatedAt filter
+                        items.append(field)
+
+                        if field.key.endswith('lastViewedAt'):
+                            import copy
+                            updatedAtField = copy.deepcopy(field)
+                            updatedAtField.key = updatedAtField.key.replace('lastViewedAt', 'updatedAt')
+                            updatedAtField.title = updatedAtField.title.replace('Last Played', 'Date Updated')
+                            items.append(updatedAtField)
+
         if not items and mediaType:
             raise BadRequest('mediaType (%s) not found.' % mediaType)
         return items
