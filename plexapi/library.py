@@ -486,11 +486,26 @@ class LibrarySection(PlexObject):
             for metaType in meta.iter('Type'):
                 if not mediaType or metaType.attrib.get('type') == mediaType:
                     fields = self.findItems(metaType, FilterField)
+                    # mediaimport.plex path: add updatedAt filter
+                    updatedAtField = None
+
                     for field in fields:
                         field._initpath = metaType.attrib.get('key')
                         fieldType = [_ for _ in self.findItems(meta, FieldType) if _.type == field.type]
                         field.operators = fieldType[0].operators
+
+                        # mediaimport.plex patch: add updatedAt filter
+                        if field.key.endswith('lastViewedAt'):
+                            import copy
+                            updatedAtField = copy.deepcopy(field)
+                            updatedAtField.key = updatedAtField.key.replace('lastViewedAt', 'updatedAt')
+                            updatedAtField.title = updatedAtField.title.replace('Last Played', 'Date Updated')
+
                     items += fields
+
+                    # mediaimport.plex patch: add updatedAt filter
+                    if updatedAtField:
+                        items.append(updatedAtField)
         if not items and mediaType:
             raise BadRequest('mediaType (%s) not found.' % mediaType)
         return items
