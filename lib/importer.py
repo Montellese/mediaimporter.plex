@@ -815,7 +815,6 @@ def loadImportSettings(handle: int, _options: dict):
 
 def canUpdateMetadataOnProvider(handle, options):  # pylint: disable=unused-argument
     """NOT IMPLEMENTED"""
-    # TODO(Montellese)
     xbmcmediaimport.setCanUpdateMetadataOnProvider(False)
 
 
@@ -826,13 +825,11 @@ def canUpdatePlaycountOnProvider(handle, options):  # pylint: disable=unused-arg
 
 def canUpdateLastPlayedOnProvider(handle, options):  # pylint: disable=unused-argument
     """NOT IMPLEMENTED"""
-    # TODO(Montellese)
     xbmcmediaimport.setCanUpdateLastPlayedOnProvider(False)
 
 
 def canUpdateResumePositionOnProvider(handle, options):  # pylint: disable=unused-argument
     """NOT IMPLEMENTED"""
-    # TODO(Montellese)
     xbmcmediaimport.setCanUpdateResumePositionOnProvider(False)
 
 
