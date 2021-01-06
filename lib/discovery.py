@@ -16,7 +16,7 @@ import xbmc  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
 from lib.monitor import Monitor
-from lib.utils import log, mediaProvider2str
+from lib.utils import getIcon, log, mediaProvider2str
 
 import plex
 from plex.server import Server
@@ -163,7 +163,7 @@ class DiscoveryService:
             return
 
         providerId = Server.BuildProviderId(server.id)
-        providerIconUrl = Server.BuildIconUrl(server.address)
+        providerIconUrl = getIcon()
 
         provider = xbmcmediaimport.MediaProvider(
             providerId,

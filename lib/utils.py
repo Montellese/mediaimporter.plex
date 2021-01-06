@@ -136,3 +136,12 @@ def mediaImport2str(mediaImport: xbmcmediaimport.MediaImport):
         raise ValueError('invalid mediaImport')
 
     return f"{mediaImport.getPath()} ({mediaImport.getMediaTypes()})"
+
+def getIcon():
+    iconPath = xbmc.translatePath(__addon__.getAddonInfo('icon'))
+    try:
+        iconPath = iconPath.decode('utf-8')
+    except AttributeError:
+        pass
+
+    return iconPath

@@ -52,7 +52,7 @@ import plexapi.exceptions
 from plexapi.myplex import MyPlexAccount, MyPlexPinLogin, MyPlexResource
 from plexapi.server import PlexServer
 
-from lib.utils import localize, log, mediaProvider2str, normalizeString
+from lib.utils import getIcon, localize, log, mediaProvider2str, normalizeString
 from lib.settings import SynchronizationSettings
 
 import plex
@@ -201,7 +201,7 @@ def discoverProviderLocally(handle: int, _options: dict) -> xbmcmediaimport.Medi
         return None
 
     providerId = Server.BuildProviderId(plexServer.machineIdentifier)
-    providerIconUrl = Server.BuildIconUrl(baseUrl)
+    providerIconUrl = getIcon()
 
     provider = xbmcmediaimport.MediaProvider(
         identifier=providerId,
@@ -499,7 +499,7 @@ def discoverProviderWithMyPlex(handle: int, _options: dict) -> xbmcmediaimport.M
     )
 
     providerId = plex.server.Server.BuildProviderId(server.clientIdentifier)
-    providerIconUrl = plex.server.Server.BuildIconUrl(baseUrl)
+    providerIconUrl = getIcon()
     provider = xbmcmediaimport.MediaProvider(
         providerId,
         baseUrl,

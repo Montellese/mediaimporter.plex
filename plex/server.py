@@ -87,18 +87,3 @@ class Server:
             raise ValueError('Invalid serverId')
 
         return f"{PLEX_PROTOCOL}://{serverId}/"
-
-    @staticmethod
-    def BuildIconUrl(baseUrl: str) -> str:
-        """Format the URL for icons from the provided baseUrl, NOT IMPLEMENTED
-
-        :param baseUrl: URL to use as the base for the icon url
-        :type baseUrl: str
-        :return: Formatted Icon URL string
-        :rtype: str
-        """
-        if not baseUrl:
-            raise ValueError('Invalid baseUrl')
-
-        # TODO(Montellese)
-        return ""
