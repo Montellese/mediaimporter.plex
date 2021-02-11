@@ -239,7 +239,7 @@ def linkToMyPlexAccount() -> MyPlexAccount:
         return None
 
     # show the user the pin
-    dialog.ok(localize(32015), localize(32053) + normalizeString(f" [COLOR FFE5A00D]{pinLogin.pin}[/COLOR]"))
+    dialog.ok(localize(32015), localize(32053, pinLogin.pin))
 
     # check the status of the authentication
     while not pinLogin.finished:
