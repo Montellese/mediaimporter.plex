@@ -175,6 +175,7 @@ class SynchronizationSettings:
             raise ValueError('invalid importSettings')
 
         # provider settings
+        url = ProviderSettings.GetUrl(providerSettings)
         directPlayAllowed = providerSettings.getBool(SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY)
 
         # import specific settings
@@ -182,6 +183,7 @@ class SynchronizationSettings:
 
         hashObject = {
             # provider settings
+            SETTINGS_PROVIDER_URL: url,
             SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY: directPlayAllowed,
             # import specific settings
             SETTINGS_IMPORT_LIBRARY_SECTIONS: librarySections,

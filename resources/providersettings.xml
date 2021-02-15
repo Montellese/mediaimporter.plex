@@ -68,6 +68,12 @@
           </constraints>
         </setting>
       </group>
+      <group id="2" label="32024">
+        <setting id="plex.changeurl" type="action" label="32025">
+          <level>0</level>
+          <control type="button" format="action" />
+        </setting>
+      </group>
     </category>
     <category id="playback" label="32062">
       <group id="1">

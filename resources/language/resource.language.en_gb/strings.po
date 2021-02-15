@@ -100,6 +100,14 @@ msgctxt "#32023"
 msgid "Direct Play Settings"
 msgstr ""
 
+msgctxt "#32024"
+msgid "Advanced"
+msgstr ""
+
+msgctxt "#32025"
+msgid "Change Plex Media Server address"
+msgstr ""
+
 #. Titel of the dialog to select the authentication method
 msgctxt "#32050"
 msgid "Plex Media Server authentication method"
@@ -172,4 +180,12 @@ msgstr ""
 #. Text of the dialog tell the user to save the settings after using force sync
 msgctxt "#32067"
 msgid "Please save the settings to start the full synchronisation."
+msgstr ""
+
+msgctxt "#32068"
+msgid "Change Plex Media Server URL"
+msgstr ""
+
+msgctxt "#32069"
+msgid "Connection failed!\nChange the Plex Media Server URL anyway?"
 msgstr ""

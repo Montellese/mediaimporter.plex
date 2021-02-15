@@ -372,6 +372,58 @@ def testConnection(handle: int, _options: dict):
     xbmcgui.Dialog().ok(title, localize(line))
 
 
+def changeUrl(handle: int, _options: dict):
+    """Change the URL of PMS
+
+    :param handle: Handle id from input
+    :type handle: int
+    :param _options: Options/parameters passed in with the call, unused
+    :type _options: dict
+    """
+    # retrieve the media provider
+    mediaProvider = xbmcmediaimport.getProvider(handle)
+    if not mediaProvider:
+        log('cannot retrieve media provider', xbmc.LOGERROR)
+        return
+
+    # get the media provider settings
+    providerSettings = mediaProvider.prepareSettings()
+    if not providerSettings:
+        log("cannot prepare provider settings", xbmc.LOGERROR)
+        return
+
+    urlCurrent = ProviderSettings.GetUrl(providerSettings)
+    if not urlCurrent:
+        log("cannot retrieve current URL from provider settings", xbmc.LOGERROR)
+        return
+
+    # ask the user for a new URL
+    urlNew = xbmcgui.Dialog().input(localize(32068), urlCurrent)
+    if not urlNew:
+        return
+
+    # store the new URL in the settings
+    ProviderSettings.SetUrl(providerSettings, urlNew)
+
+    # try to connect and authenticate with the new URL
+    success = False
+    try:
+        success = Server(mediaProvider).Authenticate()
+    except:
+        pass
+
+    dialog = xbmcgui.Dialog()
+    title = mediaProvider.getFriendlyName()
+    if success:
+        dialog.ok(title, localize(32018))
+    else:
+        # ask the user whether to change the URL anyway
+        changeUrlAnyway = dialog.yesno(title, localize(32069))
+        if not changeUrlAnyway:
+            # revert the settings to the previous / old URL
+            ProviderSettings.SetUrl(providerSettings, urlCurrent)
+
+
 def discoverProviderWithMyPlex(handle: int, _options: dict) -> xbmcmediaimport.MediaProvider:
     """
     Prompts user to sign into their Plex account using the MyPlex pin link
@@ -710,6 +762,7 @@ def loadProviderSettings(handle: int, _options: dict):
 
     settings.registerActionCallback(plex.constants.SETTINGS_PROVIDER_LINK_MYPLEX_ACCOUNT, 'linkmyplexaccount')
     settings.registerActionCallback(plex.constants.SETTINGS_PROVIDER_TEST_CONNECTION, 'testconnection')
+    settings.registerActionCallback(plex.constants.SETTINGS_PROVIDER_ADVANCED_CHANGE_URL, 'changeurl')
 
     settings.setLoaded()
 
@@ -1143,6 +1196,7 @@ ACTIONS = {
     'linkmyplexaccount': linkMyPlexAccount,
     'testconnection': testConnection,
     'forcesync': forceSync,
+    'changeurl': changeUrl,
 
     # custom setting options fillers
     'settingoptionsfillerlibrarysections': settingOptionsFillerLibrarySections
