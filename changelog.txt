@@ -1,5 +1,5 @@
 [B]Version 0.0.9[/B]
--
+- replace custom PMS network discovery with plexapi.gdm.GDM
 
 [B]Version 0.0.8[/B]
 - properly handle empty movie collections (fixes #25)
