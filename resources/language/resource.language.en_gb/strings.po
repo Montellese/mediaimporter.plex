@@ -168,3 +168,8 @@ msgstr ""
 msgctxt "#32066"
 msgid "Allow using Direct Play"
 msgstr ""
+
+#. Text of the dialog tell the user to save the settings after using force sync
+msgctxt "#32067"
+msgid "Please save the settings to start the full synchronisation."
+msgstr ""

@@ -733,6 +733,9 @@ def forceSync(handle: int, _options: dict):
     # reset the synchronization hash setting to force a full synchronization
     SynchronizationSettings.ResetHash(importSettings, save=False)
 
+    # tell the user that he needs to save the settings
+    xbmcgui.Dialog().ok(localize(32022), localize(32067))
+
 
 def settingOptionsFillerLibrarySections(handle: int, _options: dict):
     """Find and set the library sections setting from Plex matching a mediaImport's media type
