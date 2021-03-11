@@ -3,6 +3,7 @@
 - show hint after using force full synchronization
 - support actor thumbnails
 - add advanced option to change the URL of a media provider
+- pass the retrieved items in chunks back to Kodi
 
 [B]Version 0.0.8[/B]
 - properly handle empty movie collections (fixes #25)

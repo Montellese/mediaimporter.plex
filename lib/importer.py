@@ -994,6 +994,7 @@ def execImport(handle: int, options: dict):
         log(f"importing {mediaType} items from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
 
         # handle library sections
+        itemsTotal = 0
         itemsToImport = []
         sectionsProgressTotal = len(librarySections)
         for sectionsProgress, librarySection in enumerate(librarySections):
@@ -1092,9 +1093,12 @@ def execImport(handle: int, options: dict):
                             xbmc.LOGWARNING)
                         continue
 
-        if itemsToImport:
-            log(f"{len(itemsToImport)} {mediaType} items imported from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
-            xbmcmediaimport.addImportItems(handle, itemsToImport, mediaType)
+                itemsTotal += len(itemsToImport)
+                xbmcmediaimport.addImportItems(handle, itemsToImport, mediaType)
+                itemsToImport.clear()
+
+        if itemsTotal:
+            log(f"{itemsTotal} {mediaType} items imported from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
 
     xbmcmediaimport.finishImport(handle, fastSync)
 
