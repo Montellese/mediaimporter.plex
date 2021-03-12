@@ -456,7 +456,7 @@ class Api:
             log(f"cannot import {mediaType} item without identifier", xbmc.LOGERROR)
             return None
 
-        item = ListItem(label=plexItem.title)
+        item = ListItem(label=plexItem.title, offscreen=True)
 
         # fill video details
         Api.fillVideoInfos(plexServer, itemId, plexItem, mediaType, item, allowDirectPlay)
