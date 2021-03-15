@@ -634,7 +634,8 @@ class Api:
             cast.append({
                 'name': role.tag.strip(),
                 'role': role.role.strip(),
-                'order': index
+                'order': index,
+                'thumbnail': role.thumb,
             })
         if cast:
             item.setCast(cast)
