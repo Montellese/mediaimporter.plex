@@ -8,6 +8,18 @@
           <control type="button" format="action" />
         </setting>
       </group>
+      <group id="3" label="32024">
+        <setting id="plex.numdownloadthreads" type="integer" label="32032">
+          <level>0</level>
+          <default>10</default>
+          <constraints>
+            <minimum>1</minimum>
+            <step>1</step>
+            <maximum>30</maximum>
+          </constraints>
+          <control type="slider" format="integer" />
+        </setting>
+      </group>
     </category>
     <category id="library" label="32021">
       <group id="1">

@@ -7,6 +7,7 @@
 - add synchronize entry to context menu to synchronize single items
 - add play entry to context menu to choose how to play an item
 - add "Play Version ..." entry to "Play ..." context menu if an imported item has multiple versions (closes #29)
+- use multiple threads to convert media items retrieved from PMS into ListItems
 
 [B]Version 0.0.9[/B]
 - replace custom PMS network discovery with plexapi.gdm.GDM

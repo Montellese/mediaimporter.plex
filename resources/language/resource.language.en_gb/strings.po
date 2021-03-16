@@ -132,6 +132,10 @@ msgctxt "#32031"
 msgid "Skip Intro"
 msgstr ""
 
+msgctxt "#32032"
+msgid "Number of parallel download threads"
+msgstr ""
+
 #. Titel of the dialog to select the authentication method
 msgctxt "#32050"
 msgid "Plex Media Server authentication method"

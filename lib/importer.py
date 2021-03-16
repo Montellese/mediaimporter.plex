@@ -39,6 +39,7 @@ Functions:
 from dateutil import parser
 from datetime import timezone
 import sys
+import time
 from typing import List
 
 from six.moves.urllib.parse import parse_qs, unquote, urlparse
@@ -48,7 +49,6 @@ import xbmcaddon  # pylint: disable=import-error
 import xbmcgui  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
-from plexapi.base import PlexPartialObject
 import plexapi.exceptions
 from plexapi.myplex import MyPlexAccount, MyPlexPinLogin, MyPlexResource
 from plexapi.server import PlexServer
@@ -58,6 +58,7 @@ from lib.settings import ProviderSettings, SynchronizationSettings
 
 import plex
 from plex.api import Api
+from plex.converter import ToFileItemConverterThread
 from plex.server import Server
 from plex.constants import SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY
 
@@ -951,6 +952,8 @@ def execImport(handle: int, options: dict):
         log(f"cannot retrieve {mediaTypes} items without any library section", xbmc.LOGERROR)
         return
 
+    numDownloadThreads = importSettings.getInt(plex.constants.SETTINGS_IMPORT_NUM_DOWNLOAD_THREADS)
+
     # Decide if doing fast sync or not, if so set filter string to include updatedAt
     fastSync = True
     lastSync = mediaImport.getLastSynced()
@@ -993,16 +996,36 @@ def execImport(handle: int, options: dict):
         plexLibType = mappedMediaType['libtype']
         localizedMediaType = localize(mappedMediaType['label']).decode()
 
+        # prepare and start the converter threads
+        converterThreads = []
+        for _ in range(0, numDownloadThreads):
+            converterThreads.append(ToFileItemConverterThread(mediaProvider, plexServer,
+                media_type=mediaType, plex_lib_type=plexLibType, allow_direct_play=allowDirectPlay))
+        log((
+            f"starting {len(converterThreads)} threads to import {mediaType} items "
+            f"from {mediaProvider2str(mediaProvider)}..."),
+            xbmc.LOGDEBUG)
+        for converterThread in converterThreads:
+            converterThread.start()
+
+        # prepare function to stop all converter threads
+        def stopConverterThreads(converterThreads):
+            log((
+                f"stopping {len(converterThreads)} threads importing {mediaType} items "
+                f"from {mediaProvider2str(mediaProvider)}..."),
+                xbmc.LOGDEBUG)
+            for converterThread in converterThreads:
+                converterThread.stop()
+
         xbmcmediaimport.setProgressStatus(handle, localize(32001, localizedMediaType))
 
         log(f"importing {mediaType} items from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
 
         # handle library sections
-        itemsTotal = 0
-        itemsToImport = []
         sectionsProgressTotal = len(librarySections)
         for sectionsProgress, librarySection in enumerate(librarySections):
             if xbmcmediaimport.shouldCancel(handle, sectionsProgress, sectionsProgressTotal):
+                stopConverterThreads(converterThreads)
                 return
 
             # get the library section from the Plex Media Server
@@ -1012,14 +1035,16 @@ def execImport(handle: int, options: dict):
                 continue
 
             # get all matching items from the library section and turn them into ListItems
-            sectionProgress = 0
+            sectionRetrievalProgress = 0
+            sectionConversionProgress = 0
             sectionProgressTotal = ITEM_REQUEST_LIMIT
 
-            while sectionProgress < sectionProgressTotal:
-                if xbmcmediaimport.shouldCancel(handle, sectionProgress, sectionProgressTotal):
+            while sectionRetrievalProgress < sectionProgressTotal:
+                if xbmcmediaimport.shouldCancel(handle, sectionConversionProgress, sectionProgressTotal):
+                    stopConverterThreads(converterThreads)
                     return
 
-                maxResults = min(ITEM_REQUEST_LIMIT, sectionProgressTotal - sectionProgress)
+                maxResults = min(ITEM_REQUEST_LIMIT, sectionProgressTotal - sectionRetrievalProgress)
 
                 try:
                     if fastSync:
@@ -1035,7 +1060,7 @@ def execImport(handle: int, options: dict):
 
                         updatedPlexItems = section.search(
                             libtype=plexLibType,
-                            container_start=sectionProgress,
+                            container_start=sectionRetrievalProgress,
                             container_size=maxResults,
                             maxresults=maxResults,
                             filters=updatedFilter
@@ -1043,7 +1068,7 @@ def execImport(handle: int, options: dict):
                         log(f"discovered {len(updatedPlexItems)} updated {mediaType} items from {mediaProvider2str(mediaProvider)}")
                         watchedPlexItems = section.search(
                             libtype=plexLibType,
-                            container_start=sectionProgress,
+                            container_start=sectionRetrievalProgress,
                             container_size=maxResults,
                             maxresults=maxResults,
                             filters=watchedFilter
@@ -1058,80 +1083,90 @@ def execImport(handle: int, options: dict):
                     else:
                         plexItems = section.search(
                             libtype=plexLibType,
-                            container_start=sectionProgress,
+                            container_start=sectionRetrievalProgress,
                             container_size=maxResults,
                             maxresults=maxResults,
                         )
                 except plexapi.exceptions.BadRequest as e:
                     log(f"failed to fetch {mediaType} items from {mediaProvider2str(mediaProvider)}: {e}", xbmc.LOGINFO)
+                    stopConverterThreads(converterThreads)
                     return
 
                 # Update sectionProgressTotal now that search has run and totalSize has been updated
                 # TODO(Montellese): fix access of private LibrarySection._totalViewSize
                 sectionProgressTotal = section._totalViewSize
 
+                # nothing to do if no items have been retrieved from Plex
+                if not plexItems:
+                    continue
+
+                # automatically determine how to distribute the retrieved items across the available converter threads
+                plexItemsPerConverter, remainingPlexItems = divmod(len(plexItems), len(converterThreads))
+                plexItemsPerConverters = [plexItemsPerConverter] * len(converterThreads)
+                plexItemsPerConverters[0:remainingPlexItems] = [plexItemsPerConverter + 1] * remainingPlexItems
+                converterThreadIndex = 0
+
+                splitItems = []
                 for plexItem in plexItems:
-                    if xbmcmediaimport.shouldCancel(handle, sectionProgress, sectionProgressTotal):
+                    if xbmcmediaimport.shouldCancel(handle, sectionConversionProgress, sectionProgressTotal):
+                        stopConverterThreads(converterThreads)
                         return
 
-                    sectionProgress += 1
+                    sectionRetrievalProgress += 1
 
-                    try:
-                        # manually reload the item's metadata
-                        if isinstance(plexItem, PlexPartialObject) and not plexItem.isFullObject():
-                            includes = {
-                                # the following includes are explicitely set
-                                'includeExtras': True,
-                                'includeMarkers': True,
-                                'checkFiles': False,
-                                'skipRefresh': True,
-                                # the following includes are disabled to minimize the result
-                                'includeAllConcerts': False,
-                                'includeBandwidths': False,
-                                'includeChapters': False,
-                                'includeChildren': False,
-                                'includeConcerts': False,
-                                'includeExternalMedia': False,
-                                'includeGeolocation': False,
-                                'includeLoudnessRamps': False,
-                                'includeOnDeck': False,
-                                'includePopularLeaves': False,
-                                'includePreferences': False,
-                                'includeRelated': False,
-                                'includeRelatedCount': False,
-                                'includeReviews': False,
-                                'includeStations': False,
-                            }
+                    # copllect the plex items for the next converter thread
+                    splitItems.append(plexItem)
+                    plexItemsPerConverters[converterThreadIndex] -= 1
 
-                            plexItem.reload(**includes)
+                    # move to the next converter thread if necessary
+                    if not plexItemsPerConverters[converterThreadIndex]:
+                        converterThreads[converterThreadIndex].add_items_to_convert(splitItems)
+                        splitItems.clear()
 
-                        item = Api.toFileItem(
-                            plexServer=plexServer,
-                            plexItem=plexItem,
-                            mediaType=mediaType,
-                            plexLibType=plexLibType,
-                            allowDirectPlay=allowDirectPlay
-                        )
-                        if not item:
-                            continue
+                        converterThreadIndex += 1
 
-                        itemsToImport.append(item)
-                    except plexapi.exceptions.BadRequest as e:
-                        # Api.convertDateTimeToDbDateTime may return (404) not_found for orphaned items in the library
-                        log(
-                            (
-                                f"failed to retrieve item {plexItem.title} with key {plexItem.key} "
-                                f"from {mediaProvider2str(mediaProvider)}: {e}"
-                            ),
-                            xbmc.LOGWARNING)
-                        continue
+                    # retrieve and combine the progress of all converter threads
+                    sectionConversionProgress = \
+                        sum(converterThread.get_converted_items_count() for converterThread in converterThreads)
 
-                itemsTotal += len(itemsToImport)
+                if splitItems:
+                    log(f"forgot to process {len(splitItems)} {mediaType} items", xbmc.LOGWARNING)
+
+        # retrieve converted items from the converter threads
+        totalItemsToImport = 0
+        countFinishedConverterThreads = 0
+        while countFinishedConverterThreads < len(converterThreads):
+            if xbmcmediaimport.shouldCancel(handle, sectionConversionProgress, sectionProgressTotal):
+                stopConverterThreads(converterThreads)
+                return
+
+            sectionConversionProgress = 0
+            itemsToImport = []
+            for converterThread in converterThreads:
+                # update the progress
+                sectionConversionProgress += converterThread.get_converted_items_count()
+
+                # ignore finished converter threads
+                if converterThread.should_finish():
+                    continue
+
+                # retrieve the converted items
+                convertedItems = converterThread.get_converted_items()
+                itemsToImport.extend(convertedItems)
+
+                # check if all items have been converted
+                if not converterThread.get_items_to_convert_count():
+                    converterThread.finish()
+                    countFinishedConverterThreads += 1
+
+            if itemsToImport:
+                totalItemsToImport += len(itemsToImport)
                 xbmcmediaimport.addImportItems(handle, itemsToImport, mediaType)
-                itemsToImport.clear()
 
-        if itemsTotal:
-            log(f"{itemsTotal} {mediaType} items imported from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
+            time.sleep(0.1)
+
+        if totalItemsToImport:
+            log(f"{totalItemsToImport} {mediaType} items imported from {mediaProvider2str(mediaProvider)}", xbmc.LOGINFO)
 
     xbmcmediaimport.finishImport(handle, fastSync)
 
