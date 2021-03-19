@@ -493,37 +493,22 @@ class Api:
         :param allowDirectPlay: Settings definition on provider if directPlay is allowed
         :type allowDirectPlay: bool, optional
         """
-        info = {
-            'mediatype': mediaType,
-            'path': '',
-            'filenameandpath': '',
-            'title': item.getLabel() or '',
-            'sorttitle': '',
-            'originaltitle': '',
-            'plot': plexItem.summary or '',
-            'dateadded': Api.convertDateTimeToDbDateTime(plexItem.addedAt),
-            'year': 0,
-            'set': '',
-            'rating': 0.0,
-            'userrating': 0.0,
-            'mpaa': '',
-            'duration': 0,
-            'playcount': 0,
-            'lastplayed': '',
-            'director': [],
-            'writer': [],
-            'genre': [],
-            'country': [],
-            'tag': []
-        }
+        videoInfoTag = item.getVideoInfoTag()
+
+        videoInfoTag.setMediaType(mediaType)
+        videoInfoTag.setTitle(item.getLabel() or '')
+        videoInfoTag.setSortTitle(plexItem.titleSort)
+        videoInfoTag.setPlot(plexItem.summary or '')
+        videoInfoTag.setDateAdded(Api.convertDateTimeToDbDateTime(plexItem.addedAt))
+        videoInfoTag.setPlaycount(plexItem.viewCount)
+        videoInfoTag.setLastPlayed(Api.convertDateTimeToDbDateTime(plexItem.lastViewedAt))
+        videoInfoTag.setTags([plexItem.librarySectionTitle])
 
         date = None
         isFolder = False
 
-        resumePoint = {
-            'totaltime': 0,
-            'resumetime': 0
-        }
+        resumeTime = 0.0
+        duration = 0.0
 
         artwork = {}
         collections = []
@@ -531,54 +516,37 @@ class Api:
         locations = []
         roles = []
 
-        if isinstance(plexItem, video.Video):
-            info.update({
-                'sorttitle': plexItem.titleSort,
-                'playcount': plexItem.viewCount,
-                'lastplayed': Api.convertDateTimeToDbDateTime(plexItem.lastViewedAt),
-            })
-            info['tag'].append(plexItem.librarySectionTitle)
-
         if isinstance(plexItem, video.Movie):
-            info.update({
-                'mpaa': plexItem.contentRating or '',
-                'duration': Api.MillisecondsToSeconds(plexItem.duration),
-                'originaltitle': plexItem.originalTitle or '',
-                'premiered': Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt),
-                'rating': plexItem.rating or 0.0,
-                'studio': Api.ListFromString(plexItem.studio),
-                'tagline': plexItem.tagline or '',
-                'userrating': plexItem.userRating or 0.0,
-                'year': plexItem.year or 0,
-                'country': Api.ListFromMediaTags(plexItem.countries),
-                'director': Api.ListFromMediaTags(plexItem.directors),
-                'genre': Api.ListFromMediaTags(plexItem.genres),
-                'writer': Api.ListFromMediaTags(plexItem.writers),
-            })
-
-            date = info['premiered']
-            resumePoint['resumetime'] = Api.MillisecondsToSeconds(plexItem.viewOffset)
+            date = Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt)
+            duration = Api.MillisecondsToSeconds(plexItem.duration)
+            resumeTime = Api.MillisecondsToSeconds(plexItem.viewOffset)
             collections = plexItem.collections
             media = plexItem.media
             roles = plexItem.roles
+
+            videoInfoTag.setMpaa(plexItem.contentRating or '')
+            videoInfoTag.setDuration(int(duration))
+            videoInfoTag.setOriginalTitle(plexItem.originalTitle or '')
+            videoInfoTag.setPremiered(date)
+            videoInfoTag.setRating(plexItem.rating or 0.0)
+            videoInfoTag.setTagLine(plexItem.tagline or '')
+            videoInfoTag.setUserRating(int(plexItem.userRating or 0))
+            videoInfoTag.setYear(plexItem.year or 0)
+            videoInfoTag.setStudios(Api.ListFromString(plexItem.studio))
+            videoInfoTag.setCountries(Api.ListFromMediaTags(plexItem.countries))
+            videoInfoTag.setGenres(Api.ListFromMediaTags(plexItem.genres))
+            videoInfoTag.setDirectors(Api.ListFromMediaTags(plexItem.directors))
+            videoInfoTag.setWriters(Api.ListFromMediaTags(plexItem.writers))
         elif isinstance(plexItem, library.Collections):
             # ignore empty collections
             if plexItem.childCount <= 0:
                 return
+
             isFolder = True
         elif isinstance(plexItem, video.Show):
-            info.update({
-                'mpaa': plexItem.contentRating or '',
-                'duration': Api.MillisecondsToSeconds(plexItem.duration),
-                'premiered': Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt),
-                'rating': plexItem.rating or 0.0,
-                'studio': Api.ListFromString(plexItem.studio),
-                'year': plexItem.year or 0,
-                'genre': Api.ListFromMediaTags(plexItem.genres),
-            })
-
-            date = info['premiered']
             isFolder = True
+            date = Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt)
+            duration = Api.MillisecondsToSeconds(plexItem.duration)
             locations = plexItem.locations
             collections = plexItem.collections
             roles = plexItem.roles
@@ -586,35 +554,41 @@ class Api:
             banner = plexItem.banner
             if banner:
                 artwork['banner'] = plexServer.url(banner, includeToken=True)
-        elif isinstance(plexItem, video.Season):
-            info.update({
-                'tvshowtitle': plexItem.parentTitle or '',
-                'season': plexItem.index,
-            })
-            isFolder = True
-        elif isinstance(plexItem, video.Episode):
-            info.update({
-                'tvshowtitle': plexItem.grandparentTitle or '',
-                'season': plexItem.parentIndex,
-                'episode': plexItem.index,
-                'mpaa': plexItem.contentRating or '',
-                'duration': Api.MillisecondsToSeconds(plexItem.duration),
-                'aired': Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt),
-                'rating': plexItem.rating or 0.0,
-                'year': plexItem.year or 0,
-                'director': Api.ListFromMediaTags(plexItem.directors),
-                'writer': Api.ListFromMediaTags(plexItem.writers),
-            })
 
-            date = info['aired']
-            resumePoint['resumetime'] = Api.MillisecondsToSeconds(plexItem.viewOffset)
+            videoInfoTag.setMpaa(plexItem.contentRating or '')
+            videoInfoTag.setDuration(int(duration))
+            videoInfoTag.setPremiered(date)
+            videoInfoTag.setRating(plexItem.rating or 0.0)
+            videoInfoTag.setYear(plexItem.year or 0)
+            videoInfoTag.setStudios(Api.ListFromString(plexItem.studio))
+            videoInfoTag.setGenres(Api.ListFromMediaTags(plexItem.genres))
+        elif isinstance(plexItem, video.Season):
+            isFolder = True
+
+            videoInfoTag.setTvShowTitle(plexItem.parentTitle or '')
+            videoInfoTag.setSeason(plexItem.index)
+        elif isinstance(plexItem, video.Episode):
+            date = Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt)
+            resumeTime = Api.MillisecondsToSeconds(plexItem.viewOffset)
+            duration = Api.MillisecondsToSeconds(plexItem.duration)
             media = plexItem.media
+
+            videoInfoTag.setTvShowTitle(plexItem.grandparentTitle or '')
+            videoInfoTag.setSeason(plexItem.parentIndex)
+            videoInfoTag.setEpisode(plexItem.index)
+            videoInfoTag.setMpaa(plexItem.contentRating or '')
+            videoInfoTag.setDuration(int(duration))
+            videoInfoTag.setFirstAired(date)
+            videoInfoTag.setRating(plexItem.rating or 0.0)
+            videoInfoTag.setYear(plexItem.year or 0)
+            videoInfoTag.setDirectors(Api.ListFromMediaTags(plexItem.directors))
+            videoInfoTag.setWriters(Api.ListFromMediaTags(plexItem.writers))
 
         # handle collections / sets
         collections = Api.ListFromMediaTags(collections)
         if collections:
             # Kodi can only store one set per media item
-            info['set'] = collections[0]
+            videoInfoTag.setSet(collections[0])
 
         # set the item's datetime if available
         if date:
@@ -624,26 +598,21 @@ class Api:
         item.setIsFolder(isFolder)
 
         # add the item's ID as a unique ID belonging to Plex
-        item.getVideoInfoTag().setUniqueIDs({
+        videoInfoTag.setUniqueIDs({
             PLEX_PROTOCOL: itemId
         }, PLEX_PROTOCOL)
 
         # handle actors / cast
         cast = []
         for index, role in enumerate(roles):
-            cast.append({
-                'name': role.tag.strip(),
-                'role': role.role.strip(),
-                'order': index,
-                'thumbnail': role.thumb,
-            })
+            actor = xbmc.Actor(role.tag.strip(), role.role.strip(), index, role.thumb)
+            cast.append(actor)
         if cast:
-            item.setCast(cast)
+            videoInfoTag.setCast(cast)
 
         # handle resume point
-        if resumePoint['resumetime'] > 0 and info['duration'] > 0:
-            resumePoint['totaltime'] = info['duration']
-            item.setProperties(resumePoint)
+        if resumeTime > 0 and duration > 0.0:
+            videoInfoTag.setResumePoint(resumeTime, duration)
 
         # handle stream details
         mediaPart = None
@@ -654,33 +623,30 @@ class Api:
                     mediaPart = part
 
                 for videoStream in part.videoStreams():
-                    item.addStreamInfo('video', {
-                        'codec': videoStream.codec,
-                        'language': videoStream.language,
-                        'width': videoStream.width,
-                        'height': videoStream.height,
-                        'duration': info['duration']
-                    })
+                    videoInfoTag.addVideoStream(xbmc.VideoStreamDetail(
+                        width=videoStream.width,
+                        height=videoStream.height,
+                        codec=videoStream.codec,
+                        duration=int(duration),
+                        language=videoStream.language
+                    ))
 
                 for audioStream in part.audioStreams():
-                    item.addStreamInfo(
-                        'audio', {
-                            'codec': audioStream.codec,
-                            'language': audioStream.language,
-                            'channels': audioStream.channels
-                        }
-                    )
+                    videoInfoTag.addAudioStream(xbmc.AudioStreamDetail(
+                        channels=audioStream.channels,
+                        codec=audioStream.codec,
+                        language=audioStream.language
+                    ))
 
                 for subtitleStream in part.subtitleStreams():
-                    item.addStreamInfo(
-                        'subtitle', {
-                            'language': subtitleStream.language
-                        }
-                    )
+                    videoInfoTag.addSubtitleStream(xbmc.SubtitleStreamDetail(
+                        language=subtitleStream.language
+                    ))
 
+        path = None
         if mediaPart:
             # extract the absolute / actual path and the stream URL from the selected MediaPart
-            info['path'] = mediaPart.file  # path to file on disk
+            path = mediaPart.file  # path to file on disk
 
             # determine if directPlay is enabled and possible
             if allowDirectPlay:
@@ -697,12 +663,12 @@ class Api:
         elif isFolder:
             # for folders use locations for the path
             if locations:
-                info['path'] = locations[0]
+                path = locations[0]
             item.setPath(plexServer.url(plexItem.key, includeToken=True))
-        info['filenameandpath'] = item.getPath()
 
-        # set all the video infos
-        item.setInfo('video', info)
+        if path:
+            videoInfoTag.setPath(path)
+        videoInfoTag.setFilenameAndPath(item.getPath())
 
         # handle artwork
         poster = None
