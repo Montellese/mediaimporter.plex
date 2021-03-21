@@ -25,6 +25,7 @@ from six import PY3
 import xbmc  # pylint: disable=import-error
 import xbmcaddon  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
+import xbmcvfs  # pylint: disable=import-error
 
 __addon__ = xbmcaddon.Addon()
 __addonid__ = __addon__.getAddonInfo('id')
@@ -138,7 +139,7 @@ def mediaImport2str(mediaImport: xbmcmediaimport.MediaImport):
     return f"{mediaProvider2str(mediaImport.getProvider())} {mediaImport.getMediaTypes()}"
 
 def getIcon():
-    iconPath = xbmc.translatePath(__addon__.getAddonInfo('icon'))
+    iconPath = xbmcvfs.translatePath(__addon__.getAddonInfo('icon'))
     try:
         iconPath = iconPath.decode('utf-8')
     except AttributeError:
