@@ -562,11 +562,13 @@ def lookupProvider(handle: int, _options: dict):
     mediaProvider = xbmcmediaimport.getProvider(handle)
     if not mediaProvider:
         log("cannot retrieve media provider", xbmc.LOGERROR)
+        xbmcmediaimport.setProviderFound(handle, False)
         return
 
     # prepare the media provider settings
     if not mediaProvider.prepareSettings():
         log("cannot prepare media provider settings", xbmc.LOGERROR)
+        xbmcmediaimport.setProviderFound(handle, False)
         return
 
     providerFound = False
@@ -588,6 +590,7 @@ def canImport(handle: int, options: dict):
     """
     if 'path' not in options:
         log("cannot execute 'canimport' without path", xbmc.LOGERROR)
+        xbmcmediaimport.setCanImport(handle, False)
         return
 
     path = unquote(options['path'][0])
@@ -612,11 +615,13 @@ def isProviderReady(handle: int, _options: dict):
     mediaProvider = xbmcmediaimport.getProvider(handle)
     if not mediaProvider:
         log('cannot retrieve media provider', xbmc.LOGERROR)
+        xbmcmediaimport.setProviderReady(handle, False)
         return
 
     # prepare the media provider settings
     if not mediaProvider.prepareSettings():
         log('cannot prepare media provider settings', xbmc.LOGERROR)
+        xbmcmediaimport.setProviderReady(handle, False)
         return
 
     # check if authentication works with the current provider settings
@@ -641,23 +646,27 @@ def isImportReady(handle: int, _options: dict):
     mediaImport = xbmcmediaimport.getImport(handle)
     if not mediaImport:
         log("cannot retrieve media import", xbmc.LOGERROR)
+        xbmcmediaimport.setImportReady(handle, False)
         return
 
     # prepare and get the media import settings
     importSettings = mediaImport.prepareSettings()
     if not importSettings:
         log("cannot prepare media import settings", xbmc.LOGERROR)
+        xbmcmediaimport.setImportReady(handle, False)
         return
 
     # retrieve the media provider
     mediaProvider = xbmcmediaimport.getProvider(handle)
     if not mediaProvider:
         log("cannot retrieve media provider", xbmc.LOGERROR)
+        xbmcmediaimport.setImportReady(handle, False)
         return
 
     # prepare the media provider settings
     if not mediaProvider.prepareSettings():
         log("cannot prepare media provider settings", xbmc.LOGERROR)
+        xbmcmediaimport.setImportReady(handle, False)
         return
 
     try:
@@ -812,24 +821,24 @@ def loadImportSettings(handle: int, _options: dict):
     settings.setLoaded()
 
 
-def canUpdateMetadataOnProvider(handle, options):  # pylint: disable=unused-argument
+def canUpdateMetadataOnProvider(handle, _):
     """NOT IMPLEMENTED"""
-    xbmcmediaimport.setCanUpdateMetadataOnProvider(False)
+    xbmcmediaimport.setCanUpdateMetadataOnProvider(handle, False)
 
 
-def canUpdatePlaycountOnProvider(handle, options):  # pylint: disable=unused-argument
+def canUpdatePlaycountOnProvider(handle, _):
     """NOT IMPLEMENTED"""
-    xbmcmediaimport.setCanUpdatePlaycountOnProvider(True)
+    xbmcmediaimport.setCanUpdatePlaycountOnProvider(handle, True)
 
 
-def canUpdateLastPlayedOnProvider(handle, options):  # pylint: disable=unused-argument
+def canUpdateLastPlayedOnProvider(handle, _):
     """NOT IMPLEMENTED"""
-    xbmcmediaimport.setCanUpdateLastPlayedOnProvider(False)
+    xbmcmediaimport.setCanUpdateLastPlayedOnProvider(handle, False)
 
 
-def canUpdateResumePositionOnProvider(handle, options):  # pylint: disable=unused-argument
+def canUpdateResumePositionOnProvider(handle, _):
     """NOT IMPLEMENTED"""
-    xbmcmediaimport.setCanUpdateResumePositionOnProvider(False)
+    xbmcmediaimport.setCanUpdateResumePositionOnProvider(handle, False)
 
 
 def execImport(handle: int, options: dict):
