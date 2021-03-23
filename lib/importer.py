@@ -1026,8 +1026,8 @@ def execImport(handle: int, options: dict):
                         elif mediaType == xbmcmediaimport.MediaTypeSeason:
                             prefix = Api.getPlexMediaType(xbmcmediaimport.MediaTypeEpisode)['libtype'] + '.'
 
-                        updatedFilter = {prefix + 'updatedAt>': lastSyncEpoch}
-                        watchedFilter = {prefix + 'lastViewedAt>': lastSyncEpoch}
+                        updatedFilter = {prefix + 'updatedAt>>': lastSyncEpoch}
+                        watchedFilter = {prefix + 'lastViewedAt>>': lastSyncEpoch}
 
                         updatedPlexItems = section.search(
                             libtype=plexLibType,
