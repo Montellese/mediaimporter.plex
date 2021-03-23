@@ -1066,7 +1066,8 @@ def execImport(handle: int, options: dict):
                     return
 
                 # Update sectionProgressTotal now that search has run and totalSize has been updated
-                sectionProgressTotal = section.totalSize
+                # TODO(Montellese): fix access of private LibrarySection._totalViewSize
+                sectionProgressTotal = section._totalViewSize
 
                 for plexItem in plexItems:
                     if xbmcmediaimport.shouldCancel(handle, sectionProgress, sectionProgressTotal):
