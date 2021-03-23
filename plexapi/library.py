@@ -627,6 +627,7 @@ class LibrarySection(PlexObject):
         key = '/library/sections/%s/%s%s' % (self.key, category, utils.joinArgs(args))
         return self.fetchItems(key, cls=FilterChoice)
 
+    # mediaimporter.plex patch: Updated docstring description of kwargs to include ( > < ) filter options
     def search(self, title=None, sort=None, maxresults=None,
                libtype=None, container_start=0, container_size=X_PLEX_CONTAINER_SIZE, **kwargs):
         """ Search the library. The http requests will be batched in container_size. If you're only looking for the first <num>
@@ -643,8 +644,8 @@ class LibrarySection(PlexObject):
                 container_start (int): default 0
                 container_size (int): default X_PLEX_CONTAINER_SIZE in your config file.
                 **kwargs (dict): Any of the available filters for the current library section. Partial string
-                        matches allowed. Multiple matches OR together. Negative filtering also possible, just add an
-                        exclamation mark to the end of filter name, e.g. `resolution!=1x1`.
+                        matches allowed. Multiple matches OR together. Negative  and range filtering also possible,
+                        just add a symbol to the end of filter name, e.g. `resolution! = 1x1` or `lastViewedAt> = 0`.
 
                         * unwatched: Display or hide unwatched content (True, False). [all]
                         * duplicate: Display or hide duplicate items (True, False). [movie]
@@ -710,7 +711,8 @@ class LibrarySection(PlexObject):
         # check a few things before we begin
         categories = [x.key for x in self.filterFields()]
         booleanFilters = [x.key for x in self.filterFields() if x.type == 'boolean']
-        if category.endswith('!'):
+        # mediaimport.plex: Patch to include > < operator options
+        if category.endswith('!') or category.endswith('>') or category.endswith('<'):
             if category[:-1] not in categories:
                 raise BadRequest('Unknown filter category: %s' % category[:-1])
         elif category not in categories:
