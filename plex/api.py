@@ -561,8 +561,10 @@ class Api:
 
             videoInfoTag.setMpaa(plexItem.contentRating or '')
             videoInfoTag.setDuration(int(duration))
+            videoInfoTag.setOriginalTitle(plexItem.originalTitle or '')
             videoInfoTag.setPremiered(date)
             videoInfoTag.setRating(plexItem.rating or 0.0)
+            videoInfoTag.setTagLine(plexItem.tagline or '')
             videoInfoTag.setYear(plexItem.year or 0)
             videoInfoTag.setStudios(Api.ListFromString(plexItem.studio))
             videoInfoTag.setGenres(Api.ListFromMediaTags(plexItem.genres))
