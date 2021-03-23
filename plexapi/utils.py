@@ -20,6 +20,14 @@ try:
 except ImportError:
     tqdm = None
 
+# mediaimporter.plex patch: fix for datatetime.strptime returns None
+class proxydt(datetime):
+    @staticmethod
+    def strptime(date_string, format):
+        return datetime(*(time.strptime(date_string, format)[0:6]))
+
+datetime = proxydt
+
 log = logging.getLogger('plexapi')
 
 # Search Types - Plex uses these to filter specific media types when searching.
