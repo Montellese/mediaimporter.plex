@@ -1124,6 +1124,7 @@ class MyPlexPinLogin(object):
         self.finished = False
         self.expired = False
         self.token = None
+        self.pin = ""  # mediaimporter.plex patch: Can't instantiate with this as None
         self.pin = self._getPin()
 
     def run(self, callback=None, timeout=None):
