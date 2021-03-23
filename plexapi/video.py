@@ -39,6 +39,7 @@ class Video(PlexPartialObject):
         self.key = data.attrib.get('key', '')
         self.lastViewedAt = utils.toDatetime(data.attrib.get('lastViewedAt'))
         self.librarySectionID = data.attrib.get('librarySectionID')
+        self.librarySectionTitle = data.attrib.get('librarySectionTitle')  # mediaimporter.plex patch
         self.ratingKey = utils.cast(int, data.attrib.get('ratingKey'))
         self.summary = data.attrib.get('summary')
         self.thumb = data.attrib.get('thumb')
