@@ -14,7 +14,7 @@ import xbmcvfs  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
 import plexapi
-from plexapi import library, video
+from plexapi import collection, library, video
 
 from plex.constants import *
 
@@ -184,7 +184,7 @@ class Api:
             raise ValueError('invalid libraryType')
 
         if libraryType == PLEX_LIBRARY_TYPE_COLLECTION:
-            if not isinstance(plexItem, library.Collections):
+            if not isinstance(plexItem, collection.Collection):
                 return False
         elif not isinstance(plexItem, video.Video):
             return False
@@ -333,7 +333,7 @@ class Api:
         if libraryType == PLEX_LIBRARY_TYPE_EPISODE:
             return video.Episode
         if libraryType == PLEX_LIBRARY_TYPE_COLLECTION:
-            return library.Collections
+            return collection.Collection
 
         return None
 
@@ -538,7 +538,7 @@ class Api:
             videoInfoTag.setGenres(Api.ListFromMediaTags(plexItem.genres))
             videoInfoTag.setDirectors(Api.ListFromMediaTags(plexItem.directors))
             videoInfoTag.setWriters(Api.ListFromMediaTags(plexItem.writers))
-        elif isinstance(plexItem, library.Collections):
+        elif isinstance(plexItem, collection.Collection):
             # ignore empty collections
             if plexItem.childCount <= 0:
                 return
@@ -680,7 +680,7 @@ class Api:
         if isinstance(plexItem, video.Video):
             poster = plexItem.thumbUrl
             fanart = plexItem.artUrl
-        elif isinstance(plexItem, library.Collections) and plexItem.thumb:
+        elif isinstance(plexItem, collection.Collection) and plexItem.thumb:
             poster = plexServer.url(plexItem.thumb, includeToken=True)
 
         if poster:
