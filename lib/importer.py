@@ -1022,15 +1022,15 @@ def execImport(handle: int, options: dict):
 
                 try:
                     if fastSync:
-                        lastSyncEpoch = int(parser.parse(lastSync).astimezone(timezone.utc).timestamp())
+                        lastSyncDatetime = parser.parse(lastSync).astimezone(timezone.utc)
                         prefix = ''
                         if mediaType in (xbmcmediaimport.MediaTypeTvShow, xbmcmediaimport.MediaTypeEpisode):
                             prefix = Api.getPlexMediaType(mediaType)['libtype'] + '.'
                         elif mediaType == xbmcmediaimport.MediaTypeSeason:
                             prefix = Api.getPlexMediaType(xbmcmediaimport.MediaTypeEpisode)['libtype'] + '.'
 
-                        updatedFilter = {prefix + 'updatedAt>>': lastSyncEpoch}
-                        watchedFilter = {prefix + 'lastViewedAt>>': lastSyncEpoch}
+                        updatedFilter = {prefix + 'updatedAt>>': lastSyncDatetime}
+                        watchedFilter = {prefix + 'lastViewedAt>>': lastSyncDatetime}
 
                         updatedPlexItems = section.search(
                             libtype=plexLibType,
