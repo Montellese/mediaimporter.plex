@@ -479,16 +479,23 @@ class LibrarySection(PlexObject):
     def filterFields(self, mediaType=None):
         """ Returns a list of available `:class:`~plexapi.library.FilterField` for this library section.
         """
+        # mediaimporter.plex patch: fix LibrarySection.filterFields()
         items = []
-        key = '/library/sections/%s/filters?includeMeta=1' % self.key
-        data = self._server.query(key)
+        url_args = {
+            'X-Plex-Container-Start': 0,
+            'X-Plex-Container-Size': 0
+        }
+        key = '/library/sections/%s/all?includeMeta=1' % self.key
+        data = self._server.query(key, params=url_args)
         for meta in data.iter('Meta'):
+            fieldTypes = self.findItems(meta, FieldType)
             for metaType in meta.iter('Type'):
                 if not mediaType or metaType.attrib.get('type') == mediaType:
                     fields = self.findItems(metaType, FilterField)
+                    metaTypeKey = metaType.attrib.get('key')
                     for field in fields:
-                        field._initpath = metaType.attrib.get('key')
-                        fieldType = [_ for _ in self.findItems(meta, FieldType) if _.type == field.type]
+                        field._initpath = metaTypeKey
+                        fieldType = [_ for _ in fieldTypes if _.type == field.type]
                         field.operators = fieldType[0].operators
                     items += fields
         if not items and mediaType:
