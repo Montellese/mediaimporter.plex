@@ -137,7 +137,7 @@ def getLibrarySections(plexServer: PlexServer, mediaTypes: List[str]) -> List[di
     return librarySections
 
 
-def getLibrarySectionsFromSettings(importSettings: xbmcaddon.Settings) -> List[str]:
+def getLibrarySectionsFromSettings(importSettings: xbmcaddon.Settings) -> List[int]:
     """Parses library sections from provided addon settings object
 
     :param importSettings: Settings from the mediaImport being processed
@@ -148,13 +148,15 @@ def getLibrarySectionsFromSettings(importSettings: xbmcaddon.Settings) -> List[s
     if not importSettings:
         raise ValueError('invalid importSettings')
 
-    return importSettings.getStringList(plex.constants.SETTINGS_IMPORT_LIBRARY_SECTIONS)
+    # TODO(Montellese): store section IDs as an int instead of str
+    librarySectionsStr = importSettings.getStringList(plex.constants.SETTINGS_IMPORT_LIBRARY_SECTIONS)
+    return [int(librarySectionStr) for librarySectionStr in librarySectionsStr]
 
 
 def getMatchingLibrarySections(
         plexServer: PlexServer,
         mediaTypes: List[str],
-        selectedLibrarySections: List[str]
+        selectedLibrarySections: List[int]
 ) -> List[dict]:
     """Pull list of library sections matching both the media type and selection provided
 
@@ -834,7 +836,8 @@ def settingOptionsFillerLibrarySections(handle: int, _options: dict):
     # get all library sections
     mediaTypes = mediaImport.getMediaTypes()
     librarySections = getLibrarySections(plexServer, mediaTypes)
-    sections = [(section['title'], section['key']) for section in librarySections]
+    # TODO(Montellese): store section IDs as an int instead of str
+    sections = [(section['title'], str(section['key'])) for section in librarySections]
 
     # get the import's settings
     settings = mediaImport.getSettings()
