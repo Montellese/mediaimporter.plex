@@ -1,3 +1,6 @@
+[B]Version 0.0.10[/B]
+-
+
 [B]Version 0.0.9[/B]
 - replace custom PMS network discovery with plexapi.gdm.GDM
 - show hint after using force full synchronization
