@@ -609,7 +609,7 @@ class Api:
         # handle actors / cast
         cast = []
         for index, role in enumerate(roles):
-            actor = xbmc.Actor(role.tag.strip(), role.role.strip(), index, role.thumb)
+            actor = xbmc.Actor(role.tag.strip(), (role.role or '').strip(), index, role.thumb)
             cast.append(actor)
         if cast:
             videoInfoTag.setCast(cast)
