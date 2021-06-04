@@ -54,7 +54,7 @@ from plexapi.myplex import MyPlexAccount, MyPlexPinLogin, MyPlexResource
 from plexapi.server import PlexServer
 
 from lib.utils import getIcon, localize, log, mediaProvider2str, normalizeString
-from lib.settings import ProviderSettings, SynchronizationSettings
+from lib.settings import ImportSettings, ProviderSettings, SynchronizationSettings
 
 import plex
 from plex.api import Api
@@ -952,7 +952,9 @@ def execImport(handle: int, options: dict):
         log(f"cannot retrieve {mediaTypes} items without any library section", xbmc.LOGERROR)
         return
 
-    numDownloadThreads = importSettings.getInt(plex.constants.SETTINGS_IMPORT_NUM_DOWNLOAD_THREADS)
+    numDownloadThreads = ImportSettings.GetNumberOfDownloadThreads(importSettings)
+    numRetriesOnTimeout = ImportSettings.GetNumberOfRetriesOnTimeout(importSettings)
+    numSecondsBetweenRetries = ImportSettings.GetNumberOfSecondsBetweenRetries(importSettings)
 
     # Decide if doing fast sync or not, if so set filter string to include updatedAt
     fastSync = True
@@ -999,7 +1001,7 @@ def execImport(handle: int, options: dict):
         # prepare and start the converter threads
         converterThreads = []
         for _ in range(0, numDownloadThreads):
-            converterThreads.append(ToFileItemConverterThread(mediaProvider, plexServer,
+            converterThreads.append(ToFileItemConverterThread(mediaProvider, mediaImport, plexServer,
                 media_type=mediaType, plex_lib_type=plexLibType, allow_direct_play=allowDirectPlay))
         log((
             f"starting {len(converterThreads)} threads to import {mediaType} items "
@@ -1046,51 +1048,78 @@ def execImport(handle: int, options: dict):
 
                 maxResults = min(ITEM_REQUEST_LIMIT, sectionProgressTotal - sectionRetrievalProgress)
 
-                try:
-                    if fastSync:
-                        lastSyncDatetime = parser.parse(lastSync).astimezone(timezone.utc)
-                        prefix = ''
-                        if mediaType in (xbmcmediaimport.MediaTypeTvShow, xbmcmediaimport.MediaTypeEpisode):
-                            prefix = Api.getPlexMediaType(mediaType)['libtype'] + '.'
-                        elif mediaType == xbmcmediaimport.MediaTypeSeason:
-                            prefix = Api.getPlexMediaType(xbmcmediaimport.MediaTypeEpisode)['libtype'] + '.'
+                retries = numRetriesOnTimeout
+                while retries > 0:
+                    try:
+                        if fastSync:
+                            lastSyncDatetime = parser.parse(lastSync).astimezone(timezone.utc)
+                            prefix = ''
+                            if mediaType in (xbmcmediaimport.MediaTypeTvShow, xbmcmediaimport.MediaTypeEpisode):
+                                prefix = Api.getPlexMediaType(mediaType)['libtype'] + '.'
+                            elif mediaType == xbmcmediaimport.MediaTypeSeason:
+                                prefix = Api.getPlexMediaType(xbmcmediaimport.MediaTypeEpisode)['libtype'] + '.'
 
-                        updatedFilter = {prefix + 'updatedAt>>': lastSyncDatetime}
-                        watchedFilter = {prefix + 'lastViewedAt>>': lastSyncDatetime}
+                            updatedFilter = {prefix + 'updatedAt>>': lastSyncDatetime}
+                            watchedFilter = {prefix + 'lastViewedAt>>': lastSyncDatetime}
 
-                        updatedPlexItems = section.search(
-                            libtype=plexLibType,
-                            container_start=sectionRetrievalProgress,
-                            container_size=maxResults,
-                            maxresults=maxResults,
-                            filters=updatedFilter
-                        )
-                        log(f"discovered {len(updatedPlexItems)} updated {mediaType} items from {mediaProvider2str(mediaProvider)}")
-                        watchedPlexItems = section.search(
-                            libtype=plexLibType,
-                            container_start=sectionRetrievalProgress,
-                            container_size=maxResults,
-                            maxresults=maxResults,
-                            filters=watchedFilter
-                        )
-                        log(f"discovered {len(watchedPlexItems)} newly watched {mediaType} items from {mediaProvider2str(mediaProvider)}")
+                            updatedPlexItems = section.search(
+                                libtype=plexLibType,
+                                container_start=sectionRetrievalProgress,
+                                container_size=maxResults,
+                                maxresults=maxResults,
+                                filters=updatedFilter
+                            )
+                            log(f"discovered {len(updatedPlexItems)} updated {mediaType} items from {mediaProvider2str(mediaProvider)}")
+                            watchedPlexItems = section.search(
+                                libtype=plexLibType,
+                                container_start=sectionRetrievalProgress,
+                                container_size=maxResults,
+                                maxresults=maxResults,
+                                filters=watchedFilter
+                            )
+                            log(f"discovered {len(watchedPlexItems)} newly watched {mediaType} items from {mediaProvider2str(mediaProvider)}")
 
-                        plexItems = updatedPlexItems
-                        plexItems.extend(
-                            [item for item in watchedPlexItems if item.key not in [item.key for item in plexItems]]
-                        )
+                            plexItems = updatedPlexItems
+                            plexItems.extend(
+                                [item for item in watchedPlexItems if item.key not in [item.key for item in plexItems]]
+                            )
 
-                    else:
-                        plexItems = section.search(
-                            libtype=plexLibType,
-                            container_start=sectionRetrievalProgress,
-                            container_size=maxResults,
-                            maxresults=maxResults,
-                        )
-                except plexapi.exceptions.BadRequest as e:
-                    log(f"failed to fetch {mediaType} items from {mediaProvider2str(mediaProvider)}: {e}", xbmc.LOGINFO)
-                    stopConverterThreads(converterThreads)
-                    return
+                        else:
+                            plexItems = section.search(
+                                libtype=plexLibType,
+                                container_start=sectionRetrievalProgress,
+                                container_size=maxResults,
+                                maxresults=maxResults,
+                            )
+
+                        # get out of the retry loop
+                        break
+                    except Exception as e:
+                        log(f"failed to fetch {mediaType} items from {mediaProvider2str(mediaProvider)}: {e}", xbmc.LOGWARNING)
+
+                        # retry after timeout
+                        retries -= 1
+
+                        # check if there are any more retries left
+                        # if not abort the import process
+                        if retries == 0:
+                            log(
+                                (
+                                    f"fetching {mediaType} items from {mediaProvider2str(mediaProvider)} failed "
+                                    f"after {numRetriesOnTimeout} retries"
+                                ),
+                                xbmc.LOGWARNING)
+                            stopConverterThreads(converterThreads)
+                            return
+                        else:
+                            # otherwise wait before trying again
+                            log(
+                                (
+                                    f"retrying to fetch {mediaType} items from {mediaProvider2str(mediaProvider)} in "
+                                    f"{numSecondsBetweenRetries} seconds"
+                                )
+                            )
+                            time.sleep(float(numSecondsBetweenRetries))
 
                 # Update sectionProgressTotal now that search has run and totalSize has been updated
                 # TODO(Montellese): fix access of private LibrarySection._totalViewSize

@@ -12,6 +12,9 @@ from six import ensure_binary
 from typing import List
 
 from plex.constants import (
+    SETTINGS_IMPORT_NUM_DOWNLOAD_THREADS,
+    SETTINGS_IMPORT_NUM_RETRIES_ON_TIMEOUT,
+    SETTINGS_IMPORT_NUM_SECONDS_BETWEEN_RETRIES,
     SETTINGS_IMPORT_SYNC_SETTINGS_HASH,
     SETTINGS_IMPORT_LIBRARY_SECTIONS,
     SETTINGS_PROVIDER_AUTHENTICATION,
@@ -123,6 +126,41 @@ class ProviderSettings:
             if not providerSettings:
                 raise ValueError('invalid provider without settings')
             return providerSettings
+
+        return obj
+
+class ImportSettings:
+    @staticmethod
+    def GetNumberOfDownloadThreads(obj) -> int:
+        importSettings = ImportSettings._getImportSettings(obj)
+
+        return importSettings.getInt(SETTINGS_IMPORT_NUM_DOWNLOAD_THREADS)
+
+
+    @staticmethod
+    def GetNumberOfRetriesOnTimeout(obj) -> int:
+        importSettings = ImportSettings._getImportSettings(obj)
+
+        return importSettings.getInt(SETTINGS_IMPORT_NUM_RETRIES_ON_TIMEOUT)
+
+
+    @staticmethod
+    def GetNumberOfSecondsBetweenRetries(obj) -> int:
+        importSettings = ImportSettings._getImportSettings(obj)
+
+        return importSettings.getInt(SETTINGS_IMPORT_NUM_SECONDS_BETWEEN_RETRIES)
+
+
+    @staticmethod
+    def _getImportSettings(obj):
+        if not obj:
+            raise ValueError('invalid media import or media import settings')
+
+        if isinstance(obj, xbmcmediaimport.MediaImport):
+            importSettings = obj.getSettings()
+            if not importSettings:
+                raise ValueError('invalid import without settings')
+            return importSettings
 
         return obj
 

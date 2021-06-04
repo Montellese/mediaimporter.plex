@@ -136,6 +136,14 @@ msgctxt "#32032"
 msgid "Number of parallel download threads"
 msgstr ""
 
+msgctxt "#32033"
+msgid "Number of retries on timeout"
+msgstr ""
+
+msgctxt "#32034"
+msgid "Number of seconds between retries"
+msgstr ""
+
 #. Titel of the dialog to select the authentication method
 msgctxt "#32050"
 msgid "Plex Media Server authentication method"

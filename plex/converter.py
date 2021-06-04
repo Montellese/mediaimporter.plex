@@ -6,31 +6,59 @@
 #  See LICENSES/README.md for more information.
 #
 
+import logging
 from queue import Empty, Queue
+from time import sleep
 from typing import List
 
 from xbmc import LOGWARNING  # pylint: disable=import-error
 from xbmcgui import ListItem  # pylint: disable=import-error
-from xbmcmediaimport import MediaProvider  # pylint: disable=import-error
+from xbmcmediaimport import MediaImport, MediaProvider  # pylint: disable=import-error
 
 from plexapi.base import PlexPartialObject
-from plexapi.exceptions import BadRequest
 from plexapi.server import PlexServer
 from plexapi.video import Video
 
 from lib.background_thread import BackgroundThread
+from lib.settings import ImportSettings
 from lib.utils import log, mediaProvider2str
 from plex.api import Api
 
 class ToFileItemConverterThread(BackgroundThread):
+    INCLUDES = {
+        # the following includes are explicitely set
+        'includeExtras': True,
+        'includeMarkers': True,
+        'checkFiles': False,
+        'skipRefresh': True,
+        # the following includes are disabled to minimize the result
+        'includeAllConcerts': False,
+        'includeBandwidths': False,
+        'includeChapters': False,
+        'includeChildren': False,
+        'includeConcerts': False,
+        'includeExternalMedia': False,
+        'includeGeolocation': False,
+        'includeLoudnessRamps': False,
+        'includeOnDeck': False,
+        'includePopularLeaves': False,
+        'includePreferences': False,
+        'includeRelated': False,
+        'includeRelatedCount': False,
+        'includeReviews': False,
+        'includeStations': False,
+    }
+
     def __init__(self,
             media_provider: MediaProvider,
+            media_import: MediaImport,
             plex_server: PlexServer,
             media_type: str = "",
             plex_lib_type: str = "",
             allow_direct_play: bool = False):
 
         self._media_provider = media_provider
+        self._media_import = media_import
         self._plex_server = plex_server
         self._media_type = media_type
         self._plex_lib_type = plex_lib_type
@@ -74,6 +102,9 @@ class ToFileItemConverterThread(BackgroundThread):
         return self._count_processed_items
 
     def run(self):
+        numRetriesOnTimeout = ImportSettings.GetNumberOfRetriesOnTimeout(self._media_import)
+        numSecondsBetweenRetries = ImportSettings.GetNumberOfSecondsBetweenRetries(self._media_import)
+
         while not self.should_stop():
             while not self.should_stop():
                 plex_item = None
@@ -86,47 +117,53 @@ class ToFileItemConverterThread(BackgroundThread):
                     break
 
                 converted_item = None
-                try:
-                    # manually reload the item's metadata
-                    if isinstance(plex_item, PlexPartialObject) and not plex_item.isFullObject():
-                        includes = {
-                            # the following includes are explicitely set
-                            'includeExtras': True,
-                            'includeMarkers': True,
-                            'checkFiles': False,
-                            'skipRefresh': True,
-                            # the following includes are disabled to minimize the result
-                            'includeAllConcerts': False,
-                            'includeBandwidths': False,
-                            'includeChapters': False,
-                            'includeChildren': False,
-                            'includeConcerts': False,
-                            'includeExternalMedia': False,
-                            'includeGeolocation': False,
-                            'includeLoudnessRamps': False,
-                            'includeOnDeck': False,
-                            'includePopularLeaves': False,
-                            'includePreferences': False,
-                            'includeRelated': False,
-                            'includeRelatedCount': False,
-                            'includeReviews': False,
-                            'includeStations': False,
-                        }
 
-                        plex_item.reload(**includes)
+                retries = numRetriesOnTimeout
+                while retries > 0:
+                    try:
+                        # manually reload the item's metadata
+                        if isinstance(plex_item, PlexPartialObject) and not plex_item.isFullObject():
+                            plex_item.reload(**ToFileItemConverterThread.INCLUDES)
 
-                    # convert the plex item to a ListItem
-                    converted_item = Api.toFileItem(
-                        self._plex_server, plex_item, mediaType=self._media_type,
-                        plexLibType=self._plex_lib_type, allowDirectPlay=self._allow_direct_play)
-                except BadRequest as e:
-                    # Api.convertDateTimeToDbDateTime may return (404) not_found for orphaned items in the library
-                    log(
-                        (
-                            f"failed to retrieve item {plex_item.title} with key {plex_item.key} "
-                            f"from {mediaProvider2str(self._media_provider)}: {e}"
-                        ),
-                        LOGWARNING)
+                        # convert the plex item to a ListItem
+                        converted_item = Api.toFileItem(
+                            self._plex_server, plex_item, mediaType=self._media_type,
+                            plexLibType=self._plex_lib_type, allowDirectPlay=self._allow_direct_play)
+
+                        # get out of the retry loop
+                        break
+                    except Exception as e:
+                        # Api.convertDateTimeToDbDateTime may return (404) not_found for orphaned items in the library
+                        log(
+                            (
+                                f"failed to retrieve item {plex_item.title} with key {plex_item.key} "
+                                f"from {mediaProvider2str(self._media_provider)}: {e}"
+                            ),
+                            LOGWARNING)
+
+                        # retry after timeout
+                        retries -= 1
+
+                        # check if there are any more retries left
+                        # if not skip the item
+                        if retries == 0:
+                            log(
+                                (
+                                    f"retrieving item {plex_item.title} with key {plex_item.key} from "
+                                    f"{mediaProvider2str(self._media_provider)} failed after "
+                                    f"{numRetriesOnTimeout} retries"
+                                ),
+                                LOGWARNING)
+                        else:
+                            # otherwise wait before trying again
+                            log(
+                                (
+                                    f"retrying to retrieve {plex_item.title} with key {plex_item.key} from "
+                                    f"{mediaProvider2str(self._media_provider)} in "
+                                    f"{numSecondsBetweenRetries} seconds"
+                                )
+                            )
+                            sleep(float(numSecondsBetweenRetries))
 
                 # let the input queue know that the plex item has been processed
                 self._items_to_process_queue.task_done()
