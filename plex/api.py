@@ -9,7 +9,6 @@ import datetime
 from typing import List
 
 import xbmc  # pylint: disable=import-error
-import xbmcaddon  # pylint: disable=import-error
 from xbmcgui import ListItem  # pylint: disable=import-error
 import xbmcvfs  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
