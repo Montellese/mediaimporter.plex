@@ -2,19 +2,18 @@
 import copy
 import threading
 import time
+from xml.etree import ElementTree
 
 import requests
 from plexapi import (BASE_HEADERS, CONFIG, TIMEOUT, X_PLEX_ENABLE_FAST_CONNECT,
                      X_PLEX_IDENTIFIER, log, logfilter, utils)
 from plexapi.base import PlexObject
-from plexapi.exceptions import BadRequest, NotFound, Unauthorized
 from plexapi.client import PlexClient
-from plexapi.compat import ElementTree
+from plexapi.exceptions import BadRequest, NotFound, Unauthorized
 from plexapi.library import LibrarySection
 from plexapi.server import PlexServer
 from plexapi.sonos import PlexSonosClient
 from plexapi.sync import SyncItem, SyncList
-from plexapi.utils import joinArgs
 from requests.status_codes import _codes as codes
 
 
@@ -43,7 +42,7 @@ class MyPlexAccount(PlexObject):
             guest (bool): Unknown.
             home (bool): Unknown.
             homeSize (int): Unknown.
-            id (str): Your Plex account ID.
+            id (int): Your Plex account ID.
             locale (str): Your Plex locale
             mailing_list_status (str): Your current mailing list status.
             maxHomeSize (int): Unknown.
@@ -71,11 +70,13 @@ class MyPlexAccount(PlexObject):
     PLEXSERVERS = 'https://plex.tv/api/servers/{machineId}'                                     # get
     FRIENDUPDATE = 'https://plex.tv/api/friends/{userId}'                                       # put with args, delete
     REMOVEHOMEUSER = 'https://plex.tv/api/home/users/{userId}'                                  # delete
-    REMOVEINVITE = 'https://plex.tv/api/invites/requested/{userId}?friend=0&server=1&home=0'    # delete
+    REMOVEINVITE = 'https://plex.tv/api/invites/requested/{userId}?friend=1&server=1&home=1'    # delete
     REQUESTED = 'https://plex.tv/api/invites/requested'                                         # get
     REQUESTS = 'https://plex.tv/api/invites/requests'                                           # get
     SIGNIN = 'https://plex.tv/users/sign_in.xml'                                                # get with auth
     WEBHOOKS = 'https://plex.tv/api/v2/user/webhooks'                                           # get, post with data
+    OPTOUTS = 'https://plex.tv/api/v2/user/%(userUUID)s/settings/opt_outs'                      # get
+    LINK = 'https://plex.tv/api/v2/pins/link'                                                   # put
     # Hub sections
     VOD = 'https://vod.provider.plex.tv/'                                                       # get
     WEBSHOWS = 'https://webshows.provider.plex.tv/'                                             # get
@@ -87,7 +88,7 @@ class MyPlexAccount(PlexObject):
     key = 'https://plex.tv/users/account'
 
     def __init__(self, username=None, password=None, token=None, session=None, timeout=None):
-        self._token = token
+        self._token = token or CONFIG.get('auth.server_token')
         self._session = session or requests.Session()
         self._sonos_cache = []
         self._sonos_cache_timestamp = 0
@@ -114,7 +115,7 @@ class MyPlexAccount(PlexObject):
         self.guest = utils.cast(bool, data.attrib.get('guest'))
         self.home = utils.cast(bool, data.attrib.get('home'))
         self.homeSize = utils.cast(int, data.attrib.get('homeSize'))
-        self.id = data.attrib.get('id')
+        self.id = utils.cast(int, data.attrib.get('id'))
         self.locale = data.attrib.get('locale')
         self.mailing_list_status = data.attrib.get('mailing_list_status')
         self.maxHomeSize = utils.cast(int, data.attrib.get('maxHomeSize'))
@@ -127,40 +128,33 @@ class MyPlexAccount(PlexObject):
         self.title = data.attrib.get('title')
         self.username = data.attrib.get('username')
         self.uuid = data.attrib.get('uuid')
-        subscription = data.find('subscription')
 
+        subscription = data.find('subscription')
         self.subscriptionActive = utils.cast(bool, subscription.attrib.get('active'))
         self.subscriptionStatus = subscription.attrib.get('status')
         self.subscriptionPlan = subscription.attrib.get('plan')
-
-        self.subscriptionFeatures = []
-        for feature in subscription.iter('feature'):
-            self.subscriptionFeatures.append(feature.attrib.get('id'))
+        self.subscriptionFeatures = self.listAttrs(subscription, 'id', etag='feature')
 
         roles = data.find('roles')
-        self.roles = []
-        if roles:
-            for role in roles.iter('role'):
-                self.roles.append(role.attrib.get('id'))
+        self.roles = self.listAttrs(roles, 'id', etag='role')
 
         entitlements = data.find('entitlements')
-        self.entitlements = []
-        for entitlement in entitlements.iter('entitlement'):
-            self.entitlements.append(entitlement.attrib.get('id'))
+        self.entitlements = self.listAttrs(entitlements, 'id', etag='entitlement')
 
         # TODO: Fetch missing MyPlexAccount attributes
         self.profile_settings = None
         self.services = None
         self.joined_at = None
 
-    def device(self, name):
+    def device(self, name=None, clientId=None):
         """ Returns the :class:`~plexapi.myplex.MyPlexDevice` that matches the name specified.
 
             Parameters:
                 name (str): Name to match against.
+                clientId (str): clientIdentifier to match against.
         """
         for device in self.devices():
-            if device.name.lower() == name.lower():
+            if (name and device.name.lower() == name.lower() or device.clientIdentifier == clientId):
                 return device
         raise NotFound('Unable to find device %s' % name)
 
@@ -217,7 +211,7 @@ class MyPlexAccount(PlexObject):
             return []
 
         t = time.time()
-        if t - self._sonos_cache_timestamp > 60:
+        if t - self._sonos_cache_timestamp > 5:
             self._sonos_cache_timestamp = t
             data = self.query('https://sonos.plex.tv/resources')
             self._sonos_cache = [PlexSonosClient(self, elem) for elem in data]
@@ -225,29 +219,31 @@ class MyPlexAccount(PlexObject):
         return self._sonos_cache
 
     def sonos_speaker(self, name):
-        return [x for x in self.sonos_speakers() if x.title == name][0]
+        return next((x for x in self.sonos_speakers() if x.title.split("+")[0].strip() == name), None)
 
     def sonos_speaker_by_id(self, identifier):
-        return [x for x in self.sonos_speakers() if x.machineIdentifier == identifier][0]
+        return next((x for x in self.sonos_speakers() if x.machineIdentifier.startswith(identifier)), None)
 
     def inviteFriend(self, user, server, sections=None, allowSync=False, allowCameraUpload=False,
                      allowChannels=False, filterMovies=None, filterTelevision=None, filterMusic=None):
         """ Share library content with the specified user.
 
             Parameters:
-                user (str): MyPlexUser, username, email of the user to be added.
-                server (PlexServer): PlexServer object or machineIdentifier containing the library sections to share.
-                sections ([Section]): Library sections, names or ids to be shared (default None).
-                    [Section] must be defined in order to update shared sections.
+                user (:class:`~plexapi.myplex.MyPlexUser`): `MyPlexUser` object, username, or email
+                    of the user to be added.
+                server (:class:`~plexapi.server.PlexServer`): `PlexServer` object, or machineIdentifier
+                    containing the library sections to share.
+                sections (List<:class:`~plexapi.library.LibrarySection`>): List of `LibrarySection` objecs, or names
+                    to be shared (default None). `sections` must be defined in order to update shared libraries.
                 allowSync (Bool): Set True to allow user to sync content.
                 allowCameraUpload (Bool): Set True to allow user to upload photos.
                 allowChannels (Bool): Set True to allow user to utilize installed channels.
                 filterMovies (Dict): Dict containing key 'contentRating' and/or 'label' each set to a list of
-                    values to be filtered. ex: {'contentRating':['G'], 'label':['foo']}
+                    values to be filtered. ex: `{'contentRating':['G'], 'label':['foo']}`
                 filterTelevision (Dict): Dict containing key 'contentRating' and/or 'label' each set to a list of
-                    values to be filtered. ex: {'contentRating':['G'], 'label':['foo']}
+                    values to be filtered. ex: `{'contentRating':['G'], 'label':['foo']}`
                 filterMusic (Dict): Dict containing key 'label' set to a list of values to be filtered.
-                    ex: {'label':['foo']}
+                    ex: `{'label':['foo']}`
         """
         username = user.username if isinstance(user, MyPlexUser) else user
         machineId = server.machineIdentifier if isinstance(server, PlexServer) else server
@@ -273,18 +269,21 @@ class MyPlexAccount(PlexObject):
         """ Share library content with the specified user.
 
             Parameters:
-                user (str): MyPlexUser, username, email of the user to be added.
-                server (PlexServer): PlexServer object or machineIdentifier containing the library sections to share.
-                sections ([Section]): Library sections, names or ids to be shared (default None shares all sections).
+                user (:class:`~plexapi.myplex.MyPlexUser`): `MyPlexUser` object, username, or email
+                    of the user to be added.
+                server (:class:`~plexapi.server.PlexServer`): `PlexServer` object, or machineIdentifier
+                    containing the library sections to share.
+                sections (List<:class:`~plexapi.library.LibrarySection`>): List of `LibrarySection` objecs, or names
+                    to be shared (default None). `sections` must be defined in order to update shared libraries.
                 allowSync (Bool): Set True to allow user to sync content.
                 allowCameraUpload (Bool): Set True to allow user to upload photos.
                 allowChannels (Bool): Set True to allow user to utilize installed channels.
                 filterMovies (Dict): Dict containing key 'contentRating' and/or 'label' each set to a list of
-                    values to be filtered. ex: {'contentRating':['G'], 'label':['foo']}
+                    values to be filtered. ex: `{'contentRating':['G'], 'label':['foo']}`
                 filterTelevision (Dict): Dict containing key 'contentRating' and/or 'label' each set to a list of
-                    values to be filtered. ex: {'contentRating':['G'], 'label':['foo']}
+                    values to be filtered. ex: `{'contentRating':['G'], 'label':['foo']}`
                 filterMusic (Dict): Dict containing key 'label' set to a list of values to be filtered.
-                    ex: {'label':['foo']}
+                    ex: `{'label':['foo']}`
         """
         machineId = server.machineIdentifier if isinstance(server, PlexServer) else server
         sectionIds = self._getSectionIds(server, sections)
@@ -319,18 +318,21 @@ class MyPlexAccount(PlexObject):
         """ Share library content with the specified user.
 
             Parameters:
-                user (str): MyPlexUser, username, email of the user to be added.
-                server (PlexServer): PlexServer object or machineIdentifier containing the library sections to share.
-                sections ([Section]): Library sections, names or ids to be shared (default None shares all sections).
+                user (:class:`~plexapi.myplex.MyPlexUser`): `MyPlexUser` object, username, or email
+                    of the user to be added.
+                server (:class:`~plexapi.server.PlexServer`): `PlexServer` object, or machineIdentifier
+                    containing the library sections to share.
+                sections (List<:class:`~plexapi.library.LibrarySection`>): List of `LibrarySection` objecs, or names
+                    to be shared (default None). `sections` must be defined in order to update shared libraries.
                 allowSync (Bool): Set True to allow user to sync content.
                 allowCameraUpload (Bool): Set True to allow user to upload photos.
                 allowChannels (Bool): Set True to allow user to utilize installed channels.
                 filterMovies (Dict): Dict containing key 'contentRating' and/or 'label' each set to a list of
-                    values to be filtered. ex: {'contentRating':['G'], 'label':['foo']}
+                    values to be filtered. ex: `{'contentRating':['G'], 'label':['foo']}`
                 filterTelevision (Dict): Dict containing key 'contentRating' and/or 'label' each set to a list of
-                    values to be filtered. ex: {'contentRating':['G'], 'label':['foo']}
+                    values to be filtered. ex: `{'contentRating':['G'], 'label':['foo']}`
                 filterMusic (Dict): Dict containing key 'label' set to a list of values to be filtered.
-                    ex: {'label':['foo']}
+                    ex: `{'label':['foo']}`
         """
         headers = {'Content-Type': 'application/json'}
         # If user already exists, carry over sections and settings.
@@ -390,20 +392,22 @@ class MyPlexAccount(PlexObject):
         """ Update the specified user's share settings.
 
             Parameters:
-                user (str): MyPlexUser, username, email of the user to be added.
-                server (PlexServer): PlexServer object or machineIdentifier containing the library sections to share.
-                sections: ([Section]): Library sections, names or ids to be shared (default None).
-                    [Section] must be defined in order to update shared sections.
+                user (:class:`~plexapi.myplex.MyPlexUser`): `MyPlexUser` object, username, or email
+                    of the user to be updated.
+                server (:class:`~plexapi.server.PlexServer`): `PlexServer` object, or machineIdentifier
+                    containing the library sections to share.
+                sections (List<:class:`~plexapi.library.LibrarySection`>): List of `LibrarySection` objecs, or names
+                    to be shared (default None). `sections` must be defined in order to update shared libraries.
                 removeSections (Bool): Set True to remove all shares. Supersedes sections.
                 allowSync (Bool): Set True to allow user to sync content.
                 allowCameraUpload (Bool): Set True to allow user to upload photos.
                 allowChannels (Bool): Set True to allow user to utilize installed channels.
                 filterMovies (Dict): Dict containing key 'contentRating' and/or 'label' each set to a list of
-                    values to be filtered. ex: {'contentRating':['G'], 'label':['foo']}
+                    values to be filtered. ex: `{'contentRating':['G'], 'label':['foo']}`
                 filterTelevision (Dict): Dict containing key 'contentRating' and/or 'label' each set to a list of
-                    values to be filtered. ex: {'contentRating':['G'], 'label':['foo']}
+                    values to be filtered. ex: `{'contentRating':['G'], 'label':['foo']}`
                 filterMusic (Dict): Dict containing key 'label' set to a list of values to be filtered.
-                    ex: {'label':['foo']}
+                    ex: `{'label':['foo']}`
         """
         # Update friend servers
         response_filters = ''
@@ -448,7 +452,7 @@ class MyPlexAccount(PlexObject):
         if isinstance(allowChannels, dict):
             params['filterMusic'] = self._filterDictToStr(filterMusic or {})
         if params:
-            url += joinArgs(params)
+            url += utils.joinArgs(params)
             response_filters = self.query(url, self._session.put)
         return response_servers, response_filters
 
@@ -458,6 +462,7 @@ class MyPlexAccount(PlexObject):
             Parameters:
                 username (str): Username, email or id of the user to return.
         """
+        username = str(username)
         for user in self.users():
             # Home users don't have email, username etc.
             if username.lower() == user.title.lower():
@@ -487,15 +492,18 @@ class MyPlexAccount(PlexObject):
         url = self.PLEXSERVERS.replace('{machineId}', machineIdentifier)
         data = self.query(url, self._session.get)
         for elem in data[0]:
-            allSectionIds[elem.attrib.get('id', '').lower()] = elem.attrib.get('id')
-            allSectionIds[elem.attrib.get('title', '').lower()] = elem.attrib.get('id')
-            allSectionIds[elem.attrib.get('key', '').lower()] = elem.attrib.get('id')
+            _id = utils.cast(int, elem.attrib.get('id'))
+            _key = utils.cast(int, elem.attrib.get('key'))
+            _title = elem.attrib.get('title', '').lower()
+            allSectionIds[_id] = _id
+            allSectionIds[_key] = _id
+            allSectionIds[_title] = _id
         log.debug(allSectionIds)
         # Convert passed in section items to section ids from above lookup
         sectionIds = []
         for section in sections:
-            sectionKey = section.key if isinstance(section, LibrarySection) else section
-            sectionIds.append(allSectionIds[sectionKey.lower()])
+            sectionKey = section.key if isinstance(section, LibrarySection) else section.lower()
+            sectionIds.append(allSectionIds[sectionKey])
         return sectionIds
 
     def _filterDictToStr(self, filterDict):
@@ -544,7 +552,7 @@ class MyPlexAccount(PlexObject):
         return self.query(url, method=self._session.put, data=params)
 
     def syncItems(self, client=None, clientId=None):
-        """ Returns an instance of :class:`plexapi.sync.SyncList` for specified client.
+        """ Returns an instance of :class:`~plexapi.sync.SyncList` for specified client.
 
             Parameters:
                 client (:class:`~plexapi.myplex.MyPlexDevice`): a client to query SyncItems for.
@@ -564,22 +572,22 @@ class MyPlexAccount(PlexObject):
 
     def sync(self, sync_item, client=None, clientId=None):
         """ Adds specified sync item for the client. It's always easier to use methods defined directly in the media
-            objects, e.g. :func:`plexapi.video.Video.sync`, :func:`plexapi.audio.Audio.sync`.
+            objects, e.g. :func:`~plexapi.video.Video.sync`, :func:`~plexapi.audio.Audio.sync`.
 
             Parameters:
                 client (:class:`~plexapi.myplex.MyPlexDevice`): a client for which you need to add SyncItem to.
                 clientId (str): an identifier of a client for which you need to add SyncItem to.
-                sync_item (:class:`plexapi.sync.SyncItem`): prepared SyncItem object with all fields set.
+                sync_item (:class:`~plexapi.sync.SyncItem`): prepared SyncItem object with all fields set.
 
             If both `client` and `clientId` provided the client would be preferred.
             If neither `client` nor `clientId` provided the clientId would be set to current clients`s identifier.
 
             Returns:
-                :class:`plexapi.sync.SyncItem`: an instance of created syncItem.
+                :class:`~plexapi.sync.SyncItem`: an instance of created syncItem.
 
             Raises:
-                :class:`plexapi.exceptions.BadRequest`: when client with provided clientId wasn`t found.
-                :class:`plexapi.exceptions.BadRequest`: provided client doesn`t provides `sync-target`.
+                :exc:`~plexapi.exceptions.BadRequest`: When client with provided clientId wasn`t found.
+                :exc:`~plexapi.exceptions.BadRequest`: Provided client doesn`t provides `sync-target`.
         """
         if not client and not clientId:
             clientId = X_PLEX_IDENTIFIER
@@ -683,10 +691,30 @@ class MyPlexAccount(PlexObject):
         elem = ElementTree.fromstring(req.text)
         return self.findItems(elem)
 
+    def onlineMediaSources(self):
+        """ Returns a list of user account Online Media Sources settings :class:`~plexapi.myplex.AccountOptOut`
+        """
+        url = self.OPTOUTS % {'userUUID': self.uuid}
+        elem = self.query(url)
+        return self.findItems(elem, cls=AccountOptOut, etag='optOut')
+
+    def link(self, pin):
+        """ Link a device to the account using a pin code.
+
+            Parameters:
+                pin (str): The 4 digit link pin code.
+        """
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Plex-Product': 'Plex SSO'
+        }
+        data = {'code': pin}
+        self.query(self.LINK, self._session.put, headers=headers, data=data)
+
 
 class MyPlexUser(PlexObject):
     """ This object represents non-signed in users such as friends and linked
-        accounts. NOTE: This should not be confused with the :class:`~myplex.MyPlexAccount`
+        accounts. NOTE: This should not be confused with the :class:`~plexapi.myplex.MyPlexAccount`
         which is your specific account. The raw xml for the data presented here
         can be found at: https://plex.tv/api/users/
 
@@ -774,28 +802,28 @@ class MyPlexUser(PlexObject):
 
 class Section(PlexObject):
     """ This refers to a shared section. The raw xml for the data presented here
-        can be found at: https://plex.tv/api/servers/{machineId}/shared_servers/{serverId}
+        can be found at: https://plex.tv/api/servers/{machineId}/shared_servers
 
         Attributes:
             TAG (str): section
-            id (int): shared section id
-            sectionKey (str): what key we use for this section
-            title (str): Title of the section
-            sectionId (str): shared section id
-            type (str): movie, tvshow, artist
+            id (int): The shared section ID
+            key (int): The shared library section key
             shared (bool): If this section is shared with the user
+            title (str): Title of the section
+            type (str): movie, tvshow, artist
 
     """
     TAG = 'Section'
 
     def _loadData(self, data):
         self._data = data
-        # self.id = utils.cast(int, data.attrib.get('id'))  # Havnt decided if this should be changed.
-        self.sectionKey = data.attrib.get('key')
+        self.id = utils.cast(int, data.attrib.get('id'))
+        self.key = utils.cast(int, data.attrib.get('key'))
+        self.shared = utils.cast(bool, data.attrib.get('shared', '0'))
         self.title = data.attrib.get('title')
-        self.sectionId = data.attrib.get('id')
         self.type = data.attrib.get('type')
-        self.shared = utils.cast(bool, data.attrib.get('shared'))
+        self.sectionId = self.id  # For backwards compatibility
+        self.sectionKey = self.key  # For backwards compatibility
 
     def history(self, maxresults=9999999, mindate=None):
         """ Get all Play History for a user for this section in this shared server.
@@ -856,13 +884,7 @@ class MyPlexServerShare(PlexObject):
         """
         url = MyPlexAccount.FRIENDSERVERS.format(machineId=self.machineIdentifier, serverId=self.id)
         data = self._server.query(url)
-        sections = []
-
-        for section in data.iter('Section'):
-            if ElementTree.iselement(section):
-                sections.append(Section(self, section, url))
-
-        return sections
+        return self.findItems(data, Section, rtag='SharedServer')
 
     def history(self, maxresults=9999999, mindate=None):
         """ Get all Play History for a user in this shared server.
@@ -885,7 +907,7 @@ class MyPlexResource(PlexObject):
             key (str): 'https://plex.tv/api/resources?includeHttps=1&includeRelay=1'
             accessToken (str): This resources accesstoken.
             clientIdentifier (str): Unique ID for this resource.
-            connections (list): List of :class:`~myplex.ResourceConnection` objects
+            connections (list): List of :class:`~plexapi.myplex.ResourceConnection` objects
                 for this resource.
             createdAt (datetime): Timestamp this resource first connected to your server.
             device (str): Best guess on the type of device this is (PS, iPhone, Linux, etc).
@@ -930,42 +952,49 @@ class MyPlexResource(PlexObject):
         self.sourceTitle = data.attrib.get('sourceTitle')  # owners plex username.
 
     def connect(self, ssl=None, timeout=None):
-        """ Returns a new :class:`~server.PlexServer` or :class:`~client.PlexClient` object.
+        """ Returns a new :class:`~plexapi.server.PlexServer` or :class:`~plexapi.client.PlexClient` object.
             Often times there is more than one address specified for a server or client.
-            This function will prioritize local connections before remote and HTTPS before HTTP.
+            This function will prioritize local connections before remote or relay and HTTPS before HTTP.
             After trying to connect to all available addresses for this resource and
             assuming at least one connection was successful, the PlexServer object is built and returned.
 
             Parameters:
-                ssl (optional): Set True to only connect to HTTPS connections. Set False to
+                ssl (bool, optional): Set True to only connect to HTTPS connections. Set False to
                     only connect to HTTP connections. Set None (default) to connect to any
                     HTTP or HTTPS connection.
+                timeout (int, optional): The timeout in seconds to attempt each connection.
 
             Raises:
-                :class:`plexapi.exceptions.NotFound`: When unable to connect to any addresses for this resource.
+                :exc:`~plexapi.exceptions.NotFound`: When unable to connect to any addresses for this resource.
         """
-        # Sort connections from (https, local) to (http, remote)
-        # Only check non-local connections unless we own the resource
-        connections = sorted(self.connections, key=lambda c: c.local, reverse=True)
-        owned_or_unowned_non_local = lambda x: self.owned or (not self.owned and not x.local)
-        https = [c.uri for c in connections if owned_or_unowned_non_local(c)]
-        http = [c.httpuri for c in connections if owned_or_unowned_non_local(c)]
-        cls = PlexServer if 'server' in self.provides else PlexClient
-        # Force ssl, no ssl, or any (default)
-        if ssl is True: connections = https
-        elif ssl is False: connections = http
-        else: connections = https + http
+        # Keys in the order we want the connections to be sorted
+        locations = ['local', 'remote', 'relay']
+        schemes = ['https', 'http']
+        connections_dict = {location: {scheme: [] for scheme in schemes} for location in locations}
+        for connection in self.connections:
+            # Only check non-local connections unless we own the resource
+            if self.owned or (not self.owned and not connection.local):
+                location = 'relay' if connection.relay else ('local' if connection.local else 'remote')
+                connections_dict[location]['http'].append(connection.httpuri)
+                connections_dict[location]['https'].append(connection.uri)
+        if ssl is True: schemes.remove('http')
+        elif ssl is False: schemes.remove('https')
+        connections = []
+        for location in locations:
+            for scheme in schemes:
+                connections.extend(connections_dict[location][scheme])
         # Try connecting to all known resource connections in parellel, but
         # only return the first server (in order) that provides a response.
+        cls = PlexServer if 'server' in self.provides else PlexClient
         listargs = [[cls, url, self.accessToken, timeout] for url in connections]
-        log.info('Testing %s resource connections..', len(listargs))
+        log.debug('Testing %s resource connections..', len(listargs))
         results = utils.threaded(_connect, listargs)
         return _chooseConnection('Resource', self.name, results)
 
 
 class ResourceConnection(PlexObject):
     """ Represents a Resource Connection object found within the
-        :class:`~myplex.MyPlexResource` objects.
+        :class:`~plexapi.myplex.MyPlexResource` objects.
 
         Attributes:
             TAG (str): 'Connection'
@@ -1040,7 +1069,7 @@ class MyPlexDevice(PlexObject):
         self.screenDensity = data.attrib.get('screenDensity')
         self.createdAt = utils.toDatetime(data.attrib.get('createdAt'))
         self.lastSeenAt = utils.toDatetime(data.attrib.get('lastSeenAt'))
-        self.connections = [connection.attrib.get('uri') for connection in data.iter('Connection')]
+        self.connections = self.listAttrs(data, 'uri', etag='Connection')
 
     def connect(self, timeout=None):
         """ Returns a new :class:`~plexapi.client.PlexClient` or :class:`~plexapi.server.PlexServer`
@@ -1049,11 +1078,11 @@ class MyPlexDevice(PlexObject):
             at least one connection was successful, the PlexClient object is built and returned.
 
             Raises:
-                :class:`plexapi.exceptions.NotFound`: When unable to connect to any addresses for this device.
+                :exc:`~plexapi.exceptions.NotFound`: When unable to connect to any addresses for this device.
         """
         cls = PlexServer if 'server' in self.provides else PlexClient
         listargs = [[cls, url, self.token, timeout] for url in self.connections]
-        log.info('Testing %s device connections..', len(listargs))
+        log.debug('Testing %s device connections..', len(listargs))
         results = utils.threaded(_connect, listargs)
         return _chooseConnection('Device', self.name, results)
 
@@ -1063,10 +1092,10 @@ class MyPlexDevice(PlexObject):
         self._server.query(key, self._server._session.delete)
 
     def syncItems(self):
-        """ Returns an instance of :class:`plexapi.sync.SyncList` for current device.
+        """ Returns an instance of :class:`~plexapi.sync.SyncList` for current device.
 
             Raises:
-                :class:`plexapi.exceptions.BadRequest`: when the device doesn`t provides `sync-target`.
+                :exc:`~plexapi.exceptions.BadRequest`: when the device doesn`t provides `sync-target`.
         """
         if 'sync-target' not in self.provides:
             raise BadRequest('Requested syncList for device which do not provides sync-target')
@@ -1082,12 +1111,12 @@ class MyPlexPinLogin(object):
         This helper class supports a polling, threaded and callback approach.
 
         - The polling approach expects the developer to periodically check if the PIN login was
-          successful using :func:`plexapi.myplex.MyPlexPinLogin.checkLogin`.
+          successful using :func:`~plexapi.myplex.MyPlexPinLogin.checkLogin`.
         - The threaded approach expects the developer to call
-          :func:`plexapi.myplex.MyPlexPinLogin.run` and then at a later time call
-          :func:`plexapi.myplex.MyPlexPinLogin.waitForLogin` to wait for and check the result.
+          :func:`~plexapi.myplex.MyPlexPinLogin.run` and then at a later time call
+          :func:`~plexapi.myplex.MyPlexPinLogin.waitForLogin` to wait for and check the result.
         - The callback approach is an extension of the threaded approach and expects the developer
-          to pass the `callback` parameter to the call to :func:`plexapi.myplex.MyPlexPinLogin.run`.
+          to pass the `callback` parameter to the call to :func:`~plexapi.myplex.MyPlexPinLogin.run`.
           The callback will be called when the thread waiting for the PIN login to succeed either
           finishes or expires. The parameter passed to the callback is the received authentication
           token or `None` if the login expired.
@@ -1098,34 +1127,40 @@ class MyPlexPinLogin(object):
             requestTimeout (int): timeout in seconds on initial connect to plex.tv (default config.TIMEOUT).
 
         Attributes:
-            PINS (str): 'https://plex.tv/pins.xml'
-            CHECKPINS (str): 'https://plex.tv/pins/{pinid}.xml'
+            PINS (str): 'https://plex.tv/api/v2/pins'
+            CHECKPINS (str): 'https://plex.tv/api/v2/pins/{pinid}'
+            LINK (str): 'https://plex.tv/api/v2/pins/link'
             POLLINTERVAL (int): 1
             finished (bool): Whether the pin login has finished or not.
             expired (bool): Whether the pin login has expired or not.
             token (str): Token retrieved through the pin login.
             pin (str): Pin to use for the login on https://plex.tv/link.
     """
-    PINS = 'https://plex.tv/pins.xml'               # get
-    CHECKPINS = 'https://plex.tv/pins/{pinid}.xml'  # get
+    PINS = 'https://plex.tv/api/v2/pins'               # get
+    CHECKPINS = 'https://plex.tv/api/v2/pins/{pinid}'  # get
     POLLINTERVAL = 1
 
-    def __init__(self, session=None, requestTimeout=None):
+    def __init__(self, session=None, requestTimeout=None, headers=None):
         super(MyPlexPinLogin, self).__init__()
         self._session = session or requests.Session()
         self._requestTimeout = requestTimeout or TIMEOUT
+        self.headers = headers
 
         self._loginTimeout = None
         self._callback = None
         self._thread = None
         self._abort = False
         self._id = None
+        self._code = None
+        self._getCode()
 
         self.finished = False
         self.expired = False
         self.token = None
-        self.pin = ""  # mediaimport.plex patch: Can't instantiate with this as None
-        self.pin = self._getPin()
+
+    @property
+    def pin(self):
+        return self._code
 
     def run(self, callback=None, timeout=None):
         """ Starts the thread which monitors the PIN login state.
@@ -1134,8 +1169,8 @@ class MyPlexPinLogin(object):
                 timeout (int): Timeout in seconds waiting for the PIN login to succeed (optional).
 
             Raises:
-                :class:`RuntimeError`: if the thread is already running.
-                :class:`RuntimeError`: if the PIN login for the current PIN has expired.
+                :class:`RuntimeError`: If the thread is already running.
+                :class:`RuntimeError`: If the PIN login for the current PIN has expired.
         """
         if self._thread and not self._abort:
             raise RuntimeError('MyPlexPinLogin thread is already running')
@@ -1188,19 +1223,16 @@ class MyPlexPinLogin(object):
 
         return False
 
-    def _getPin(self):
-        if self.pin:
-            return self.pin
-
+    def _getCode(self):
         url = self.PINS
         response = self._query(url, self._session.post)
         if not response:
             return None
 
-        self._id = response.find('id').text
-        self.pin = response.find('code').text
+        self._id = response.attrib.get('id')
+        self._code = response.attrib.get('code')
 
-        return self.pin
+        return self._code
 
     def _checkLogin(self):
         if not self._id:
@@ -1214,7 +1246,7 @@ class MyPlexPinLogin(object):
         if not response:
             return False
 
-        token = response.find('auth_token').text
+        token = response.attrib.get('authToken')
         if not token:
             return False
 
@@ -1242,11 +1274,19 @@ class MyPlexPinLogin(object):
         finally:
             self.finished = True
 
-    def _query(self, url, method=None):
+    def _headers(self, **kwargs):
+        """ Returns dict containing base headers for all requests for pin login. """
+        headers = BASE_HEADERS.copy()
+        if self.headers:
+            headers.update(self.headers)
+        headers.update(kwargs)
+        return headers
+
+    def _query(self, url, method=None, headers=None, **kwargs):
         method = method or self._session.get
         log.debug('%s %s', method.__name__.upper(), url)
-        headers = BASE_HEADERS.copy()
-        response = method(url, headers=headers, timeout=self._requestTimeout)
+        headers = headers or self._headers()
+        response = method(url, headers=headers, timeout=self._requestTimeout, **kwargs)
         if not response.ok:  # pragma: no cover
             codename = codes.get(response.status_code)[0]
             errtext = response.text.replace('\n', ' ')
@@ -1289,9 +1329,60 @@ def _chooseConnection(ctype, name, results):
     # or (url, token, None, runtime) in the case a connection could not be established.
     for url, token, result, runtime in results:
         okerr = 'OK' if result else 'ERR'
-        log.info('%s connection %s (%ss): %s?X-Plex-Token=%s', ctype, okerr, runtime, url, token)
+        log.debug('%s connection %s (%ss): %s?X-Plex-Token=%s', ctype, okerr, runtime, url, token)
     results = [r[2] for r in results if r and r[2] is not None]
     if results:
-        log.info('Connecting to %s: %s?X-Plex-Token=%s', ctype, results[0]._baseurl, results[0]._token)
+        log.debug('Connecting to %s: %s?X-Plex-Token=%s', ctype, results[0]._baseurl, results[0]._token)
         return results[0]
     raise NotFound('Unable to connect to %s: %s' % (ctype.lower(), name))
+
+
+class AccountOptOut(PlexObject):
+    """ Represents a single AccountOptOut
+        'https://plex.tv/api/v2/user/{userUUID}/settings/opt_outs'
+
+        Attributes:
+            TAG (str): optOut
+            key (str): Online Media Source key
+            value (str): Online Media Source opt_in, opt_out, or opt_out_managed
+    """
+    TAG = 'optOut'
+    CHOICES = {'opt_in', 'opt_out', 'opt_out_managed'}
+
+    def _loadData(self, data):
+        self.key = data.attrib.get('key')
+        self.value = data.attrib.get('value')
+
+    def _updateOptOut(self, option):
+        """ Sets the Online Media Sources option.
+
+            Parameters:
+                option (str): see CHOICES
+
+            Raises:
+                :exc:`~plexapi.exceptions.NotFound`: ``option`` str not found in CHOICES.
+        """
+        if option not in self.CHOICES:
+            raise NotFound('%s not found in available choices: %s' % (option, self.CHOICES))
+        url = self._server.OPTOUTS % {'userUUID': self._server.uuid}
+        params = {'key': self.key, 'value': option}
+        self._server.query(url, method=self._server._session.post, params=params)
+        self.value = option  # assume query successful and set the value to option
+
+    def optIn(self):
+        """ Sets the Online Media Source to "Enabled". """
+        self._updateOptOut('opt_in')
+
+    def optOut(self):
+        """ Sets the Online Media Source to "Disabled". """
+        self._updateOptOut('opt_out')
+
+    def optOutManaged(self):
+        """ Sets the Online Media Source to "Disabled for Managed Users".
+        
+            Raises:
+                :exc:`~plexapi.exceptions.BadRequest`: When trying to opt out music.
+        """
+        if self.key == 'tv.plex.provider.music':
+            raise BadRequest('%s does not have the option to opt out managed users.' % self.key)
+        self._updateOptOut('opt_out_managed')

@@ -1,5 +1,5 @@
 [B]Version 0.0.10[/B]
--
+- bump plexapi from 3.5.0 to 4.6.0
 
 [B]Version 0.0.9[/B]
 - replace custom PMS network discovery with plexapi.gdm.GDM
