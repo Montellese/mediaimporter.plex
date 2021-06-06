@@ -1034,7 +1034,7 @@ def execImport(handle: int, options: dict):
                             container_start=sectionProgress,
                             container_size=maxResults,
                             maxresults=maxResults,
-                            **updatedFilter
+                            filters=updatedFilter
                         )
                         log(f"discovered {len(updatedPlexItems)} updated {mediaType} items from {mediaProvider2str(mediaProvider)}")
                         watchedPlexItems = section.search(
@@ -1042,7 +1042,7 @@ def execImport(handle: int, options: dict):
                             container_start=sectionProgress,
                             container_size=maxResults,
                             maxresults=maxResults,
-                            **watchedFilter
+                            filters=watchedFilter
                         )
                         log(f"discovered {len(watchedPlexItems)} newly watched {mediaType} items from {mediaProvider2str(mediaProvider)}")
 
