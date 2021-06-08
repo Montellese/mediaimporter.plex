@@ -6,6 +6,7 @@
 #  See LICENSES/README.md for more information.
 #
 import datetime
+from six.moves.urllib.parse import urlparse
 from typing import List
 
 import xbmc  # pylint: disable=import-error
@@ -604,9 +605,16 @@ class Api:
         item.setIsFolder(isFolder)
 
         # add the item's ID as a unique ID belonging to Plex
-        videoInfoTag.setUniqueIDs({
+        uniqueIDs = {
             PLEX_PROTOCOL: str(itemId)
-        }, PLEX_PROTOCOL)
+        }
+        # retrieve and map GUIDS from Plex
+        if isinstance(plexItem, (video.Movie, video.Show, video.Season, video.Episode)):
+            guids = Api._mapGuids(plexItem.guids)
+            if guids:
+                uniqueIDs = {**guids, **uniqueIDs}
+
+        videoInfoTag.setUniqueIDs(uniqueIDs, PLEX_PROTOCOL)
 
         # handle actors / cast
         cast = []
@@ -716,3 +724,19 @@ class Api:
             path.replace('/', '\\')
 
         return path
+
+    @staticmethod
+    def _mapGuids(guids: List[plexapi.media.Guid]) -> dict:
+        guidMap = {}
+        if not guids:
+            return guidMap
+
+        for guid in guids:
+            try:
+                parsedGuid = urlparse(guid.id)
+                if parsedGuid.scheme and parsedGuid.netloc:
+                    guidMap[parsedGuid.scheme] = parsedGuid.netloc
+            except ValueError:
+                pass
+
+        return guidMap
