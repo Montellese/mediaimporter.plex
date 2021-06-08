@@ -511,10 +511,10 @@ class Api:
         roles = []
 
         if isinstance(plexItem, video.Video):
-            videoInfoTag.setSortTitle(plexItem.titleSort)
+            videoInfoTag.setSortTitle(plexItem.titleSort or '')
             videoInfoTag.setPlot(plexItem.summary or '')
             videoInfoTag.setDateAdded(Api.convertDateTimeToDbDateTime(plexItem.addedAt))
-            videoInfoTag.setPlaycount(plexItem.viewCount)
+            videoInfoTag.setPlaycount(plexItem.viewCount or 0)
             videoInfoTag.setLastPlayed(Api.convertDateTimeToDbDateTime(plexItem.lastViewedAt))
             videoInfoTag.setTags([plexItem.librarySectionTitle])
 

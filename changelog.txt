@@ -1,6 +1,7 @@
 [B]Version 0.0.10[/B]
 - bump plexapi from 3.5.0 to 4.6.0
 - map GUIDs to Kodi's unique IDs
+- manually perform an optimized reload of media item metadata
 
 [B]Version 0.0.9[/B]
 - replace custom PMS network discovery with plexapi.gdm.GDM

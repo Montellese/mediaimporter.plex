@@ -48,6 +48,7 @@ import xbmcaddon  # pylint: disable=import-error
 import xbmcgui  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
+from plexapi.base import PlexPartialObject
 import plexapi.exceptions
 from plexapi.myplex import MyPlexAccount, MyPlexPinLogin, MyPlexResource
 from plexapi.server import PlexServer
@@ -1076,6 +1077,34 @@ def execImport(handle: int, options: dict):
                     sectionProgress += 1
 
                     try:
+                        # manually reload the item's metadata
+                        if isinstance(plexItem, PlexPartialObject) and not plexItem.isFullObject():
+                            includes = {
+                                # the following includes are explicitely set
+                                'includeExtras': True,
+                                'includeMarkers': True,
+                                'checkFiles': False,
+                                'skipRefresh': True,
+                                # the following includes are disabled to minimize the result
+                                'includeAllConcerts': False,
+                                'includeBandwidths': False,
+                                'includeChapters': False,
+                                'includeChildren': False,
+                                'includeConcerts': False,
+                                'includeExternalMedia': False,
+                                'includeGeolocation': False,
+                                'includeLoudnessRamps': False,
+                                'includeOnDeck': False,
+                                'includePopularLeaves': False,
+                                'includePreferences': False,
+                                'includeRelated': False,
+                                'includeRelatedCount': False,
+                                'includeReviews': False,
+                                'includeStations': False,
+                            }
+
+                            plexItem.reload(**includes)
+
                         item = Api.toFileItem(
                             plexServer=plexServer,
                             plexItem=plexItem,
