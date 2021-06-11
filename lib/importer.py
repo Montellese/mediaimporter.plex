@@ -10,10 +10,7 @@ Collection of functions for importing data from PMS and a runner to front them.
 
 Functions:
     canImport
-    canUpdateLastPlayedOnProvider
-    canUpdateMetadataOnProvider
-    canUpdatePlaycountOnProvider
-    canUpdateResumePositionOnProvider
+    canUpdatePlaybackMetadataOnProvider
     discoverProvider
     discoverProviderLocally
     discoverProviderWithMyPlex
@@ -879,24 +876,9 @@ def loadImportSettings(handle: int, _options: dict):
     settings.setLoaded()
 
 
-def canUpdateMetadataOnProvider(handle, _):
+def canUpdatePlaybackMetadataOnProvider(handle, _):
     """NOT IMPLEMENTED"""
-    xbmcmediaimport.setCanUpdateMetadataOnProvider(handle, False)
-
-
-def canUpdatePlaycountOnProvider(handle, _):
-    """NOT IMPLEMENTED"""
-    xbmcmediaimport.setCanUpdatePlaycountOnProvider(handle, True)
-
-
-def canUpdateLastPlayedOnProvider(handle, _):
-    """NOT IMPLEMENTED"""
-    xbmcmediaimport.setCanUpdateLastPlayedOnProvider(handle, False)
-
-
-def canUpdateResumePositionOnProvider(handle, _):
-    """NOT IMPLEMENTED"""
-    xbmcmediaimport.setCanUpdateResumePositionOnProvider(handle, False)
+    xbmcmediaimport.setCanUpdatePlaybackMetadataOnProvider(handle, True)
 
 
 def execImport(handle: int, options: dict):
@@ -1286,10 +1268,7 @@ ACTIONS = {
     'isimportready': isImportReady,
     'loadprovidersettings': loadProviderSettings,
     'loadimportsettings': loadImportSettings,
-    'canupdatemetadataonprovider': canUpdateMetadataOnProvider,
-    'canupdateplaycountonprovider': canUpdatePlaycountOnProvider,
-    'canupdatelastplayedonprovider': canUpdateLastPlayedOnProvider,
-    'canupdateresumepositiononprovider': canUpdateResumePositionOnProvider,
+    'canupdateplaybackmetadataonprovider': canUpdatePlaybackMetadataOnProvider,
     'import': execImport,
     'updateonprovider': updateOnProvider,
 
