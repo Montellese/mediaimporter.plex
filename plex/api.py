@@ -522,9 +522,9 @@ class Api:
             date = Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt)
             duration = Api.MillisecondsToSeconds(plexItem.duration)
             resumeTime = Api.MillisecondsToSeconds(plexItem.viewOffset)
-            collections = plexItem.collections
-            media = plexItem.media
-            roles = plexItem.roles
+            collections = plexItem.collections or []
+            media = plexItem.media or []
+            roles = plexItem.roles or []
 
             videoInfoTag.setMpaa(plexItem.contentRating or '')
             videoInfoTag.setDuration(int(duration))
@@ -552,9 +552,9 @@ class Api:
             isFolder = True
             date = Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt)
             duration = Api.MillisecondsToSeconds(plexItem.duration)
-            locations = plexItem.locations
-            collections = plexItem.collections
-            roles = plexItem.roles
+            locations = plexItem.locations or []
+            collections = plexItem.collections or []
+            roles = plexItem.roles or []
 
             banner = plexItem.banner
             if banner:
@@ -578,7 +578,7 @@ class Api:
             date = Api.convertDateTimeToDbDate(plexItem.originallyAvailableAt)
             resumeTime = Api.MillisecondsToSeconds(plexItem.viewOffset)
             duration = Api.MillisecondsToSeconds(plexItem.duration)
-            media = plexItem.media
+            media = plexItem.media or []
 
             videoInfoTag.setTvShowTitle(plexItem.grandparentTitle or '')
             videoInfoTag.setSeason(int(plexItem.parentIndex))
@@ -638,23 +638,23 @@ class Api:
 
                 for videoStream in part.videoStreams():
                     videoInfoTag.addVideoStream(xbmc.VideoStreamDetail(
-                        width=videoStream.width,
-                        height=videoStream.height,
-                        codec=videoStream.codec,
+                        width=videoStream.width or 0,
+                        height=videoStream.height or 0,
+                        codec=videoStream.codec or '',
                         duration=int(duration),
-                        language=videoStream.language
+                        language=videoStream.language or ''
                     ))
 
                 for audioStream in part.audioStreams():
                     videoInfoTag.addAudioStream(xbmc.AudioStreamDetail(
-                        channels=audioStream.channels,
-                        codec=audioStream.codec,
-                        language=audioStream.language
+                        channels=audioStream.channels or 2,
+                        codec=audioStream.codec or '',
+                        language=audioStream.language or ''
                     ))
 
-                for subtitleStream in part.subtitleStreams():
+                for index, subtitleStream in enumerate(part.subtitleStreams()):
                     videoInfoTag.addSubtitleStream(xbmc.SubtitleStreamDetail(
-                        language=subtitleStream.language
+                        language=subtitleStream.language or f"[{index}]"
                     ))
 
         path = None
