@@ -633,7 +633,7 @@ class Api:
         for mediaStream in media:
             for part in mediaStream.parts:
                 # pick the first MediaPart with a valid file and stream URL
-                if mediaPart is None and part.file is not None and part.key is not None:
+                if not mediaPart and part.file and part.key:
                     mediaPart = part
 
                 for videoStream in part.videoStreams():
