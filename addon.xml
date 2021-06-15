@@ -13,6 +13,17 @@
         <providersettings>providersettings.xml</providersettings>
         <importsettings>importsettings.xml</importsettings>
     </extension>
+    <extension point="kodi.context.item">
+        <menu id="kodi.core.main">
+            <menu>
+                <label>Plex Media Importer</label>
+                <item library="context.py" args="?action=refresh">
+                    <label>32100</label>
+                    <visible>ListItem.IsImported + ListItem.IsEnabled + String.IsEqual(ListItem.MediaImporter,mediaimporter.plex)</visible>
+                </item>
+            </menu>
+        </menu>
+    </extension>
     <extension point="xbmc.addon.metadata">
         <summary lang="en_GB">Import and play media items from a Plex Media Server (PMS)</summary>
         <description lang="en_GB">Plex Media Importer allows you to import and play media libraries, for movies, tv shows and music videos, from Plex Media Server (PMS). Thus using Plex as a metadata manager (server) and Kodi as player (client). In addition playback data can be synced across multiple clients, for each user on Plex.</description>

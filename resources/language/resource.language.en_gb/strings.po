@@ -213,3 +213,8 @@ msgstr ""
 msgctxt "#32069"
 msgid "Connection failed!\nChange the Plex Media Server URL anyway?"
 msgstr ""
+
+#. Label of the refresh metadata context menu item
+msgctxt "#32100"
+msgid "Refresh metadata"
+msgstr ""
