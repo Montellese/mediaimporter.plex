@@ -6,6 +6,7 @@
 #  See LICENSES/README.md for more information.
 #
 import datetime
+import json
 from six.moves.urllib.parse import urlparse
 from typing import List
 
@@ -284,7 +285,77 @@ class Api:
         :return: ID of the item
         :rtype: int
         """
-        return int(listItem.getUniqueID(PLEX_PROTOCOL))
+        if not listItem:
+            raise ValueError('invalid listItem')
+
+        videoInfoTag = listItem.getVideoInfoTag()
+        if not videoInfoTag:
+            return None
+
+        return Api.getItemIdFromVideoInfoTag(videoInfoTag)
+
+    @staticmethod
+    # pylint: disable=too-many-return-statements
+    def getItemIdFromVideoInfoTag(videoInfoTag: xbmc.InfoTagVideo) -> int:
+        """Get the item ID from a InfoTagVideo object
+
+        :param videoInfoTag: InfoTagVideo object to get the ID of
+        :type videoInfoTag: :class:`xbmc.InfoTagVideo`
+        :return: ID of the item
+        :rtype: int
+        """
+        if not videoInfoTag:
+            raise ValueError('invalid videoInfoTag')
+
+        plexItemId = videoInfoTag.getUniqueID(PLEX_PROTOCOL)
+        if plexItemId:
+            return int(plexItemId)
+
+        # try to get the database Identifier
+        dbId = videoInfoTag.getDbId()
+        if not dbId:
+            return None
+
+        mediaType = videoInfoTag.getMediaType()
+        if mediaType == xbmcmediaimport.MediaTypeMovie:
+            method = 'Movie'
+        elif mediaType == xbmcmediaimport.MediaTypeTvShow:
+            method = 'TVShow'
+        elif mediaType == xbmcmediaimport.MediaTypeEpisode:
+            method = 'Episode'
+        elif mediaType == xbmcmediaimport.MediaTypeMusicVideo:
+            method = 'MusicVideo'
+        else:
+            return None
+
+        # use JSON-RPC to retrieve all unique IDs
+        jsonResponse = json.loads(xbmc.executeJSONRPC(json.dumps(
+            {
+                'jsonrpc': '2.0',
+                'method': 'VideoLibrary.Get{}Details'.format(method),
+                'params': {
+                    '{}id'.format(mediaType): dbId,
+                    'properties': ['uniqueid'],
+                },
+                'id': 0
+            })))
+        if not jsonResponse or 'result' not in jsonResponse:
+            return None
+
+        jsonResult = jsonResponse['result']
+        detailsKey = '{}details'.format(mediaType)
+        if detailsKey not in jsonResult:
+            return None
+
+        jsonDetails = jsonResult[detailsKey]
+        if 'uniqueid' not in jsonDetails:
+            return None
+
+        jsonUniqueIDs = jsonDetails['uniqueid']
+        if PLEX_PROTOCOL not in jsonUniqueIDs:
+            return None
+
+        return int(jsonUniqueIDs[PLEX_PROTOCOL])
 
     @staticmethod
     def getItemIdFromPlexKey(plexItemKey: str) -> int:

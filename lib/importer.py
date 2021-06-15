@@ -1178,7 +1178,7 @@ def updateOnProvider(handle: int, _options: dict):
         return
 
     # determine the item's identifier / ratingKey
-    itemId = Api.getItemIdFromListItem(item)
+    itemId = Api.getItemIdFromVideoInfoTag(itemVideoInfoTag)
     if not itemId:
         log(f"cannot determine the identifier of the updated item: {itemVideoInfoTag.getPath()}", xbmc.LOGERROR)
         return
