@@ -16,7 +16,7 @@ import xbmcvfs  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
 import plexapi
-from plexapi import collection, video
+from plexapi import collection, server, video
 
 from plex.constants import *
 
@@ -411,14 +411,14 @@ class Api:
 
     @staticmethod
     def getPlexItemDetails(
-            plexServer: plexapi.server.PlexServer,
+            plexServer: server.PlexServer,
             plexItemId: int,
             plexItemClass: video.Video = None
     ) -> video.Video:
         """Get details of Plex item from the specified server by its ID
 
         :param plexServer: Plex server object to interact with
-        :type plexServer: :class:`plexapi.server.PlexServer`
+        :type plexServer: :class:`server.PlexServer`
         :param plexItemId: ID of the item to retreive from the server
         :type plexItemId: int
         :param plexItemClass: Plex video object to populate
@@ -439,7 +439,7 @@ class Api:
 
     @staticmethod
     def getPlexItemAsListItem(
-            plexServer: plexapi.server.PlexServer,
+            plexServer: server.PlexServer,
             plexItemId: int,
             plexItemClass: video.Video = None,
             allowDirectPlay: bool = False
@@ -447,7 +447,7 @@ class Api:
         """Get details of Plex item from the specified server by its ID and conver to xbmcgui ListItem object
 
         :param plexServer: Plex server object to interact with
-        :type plexServer: :class:`plexapi.server.PlexServer`
+        :type plexServer: :class:`server.PlexServer`
         :param plexItemId: ID of the item to retreive from the server
         :type plexItemId: int
         :param plexItemClass: Plex video object to populate
@@ -470,7 +470,7 @@ class Api:
 
     @staticmethod
     def toFileItem(
-            plexServer: plexapi.server.PlexServer,
+            plexServer: server.PlexServer,
             plexItem: video.Video,
             mediaType: str = "",
             plexLibType: str = "",
@@ -479,7 +479,7 @@ class Api:
         """Validate, populate, and convert the provided plexItem into a Kodi GUI ListItem object
 
         :param plexServer: Plex server to gather additional details from
-        :type plexServer: plexapi.server.PlexServer
+        :type plexServer: server.PlexServer
         :param plexItem: Plex object populated with information about the item
         :type plexItem: video.Video
         :param mediaType: Kodi Media type object, defaults to ''
@@ -540,7 +540,7 @@ class Api:
 
     @staticmethod
     def fillVideoInfos(
-            plexServer: plexapi.server.PlexServer,
+            plexServer: server.PlexServer,
             itemId: int,
             plexItem: video.Video,
             mediaType: str,
@@ -552,7 +552,7 @@ class Api:
         and additional detail pulled from the provided plexServer
 
         :param plexServer: Plex server to gather additional details from
-        :type plexServer: plexapi.server.PlexServer
+        :type plexServer: server.PlexServer
         :param itemId: Unique ID of the plex Video object item
         :type itemId: int
         :param plexItem: Plex object populated with information about the item
