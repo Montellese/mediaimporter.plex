@@ -16,7 +16,7 @@ import xbmcvfs  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
 import plexapi
-from plexapi import collection, library, video
+from plexapi import collection, video
 
 from plex.constants import *
 
