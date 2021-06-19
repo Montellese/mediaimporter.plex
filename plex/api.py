@@ -410,6 +410,38 @@ class Api:
         return None
 
     @staticmethod
+    def getPlexMediaClassFromListItem(item: ListItem) -> video.Video:
+        """Get the plexapi video obejct type matching the provided ListItem
+
+        :param item: ListItem
+        :type item: :class:`xbmcgui.ListItem`
+        :return: Plex media class obejct matching the provided media type
+        :rtype: :class:`video.Video`
+        """
+        if not item:
+            raise ValueError('invalid item')
+
+        videoInfoTag = item.getVideoInfoTag()
+        if not videoInfoTag:
+            return None
+
+        return Api.getPlexMediaClassFromVideoInfoTag(videoInfoTag)
+
+    @staticmethod
+    def getPlexMediaClassFromVideoInfoTag(videoInfoTag: xbmc.InfoTagVideo) -> video.Video:
+        """Get the plexapi video obejct type matching the provided InfoTagVideo
+
+        :param videoInfoTag: InfoTagVideo object
+        :type videoInfoTag: :class:`xbmc.InfoTagVideo`
+        :return: Plex media class obejct matching the provided media type
+        :rtype: :class:`video.Video`
+        """
+        if not videoInfoTag:
+            raise ValueError('invalid videoInfoTag')
+
+        return Api.getPlexMediaClassFromMediaType(videoInfoTag.getMediaType())
+
+    @staticmethod
     def getPlexItemDetails(
             plexServer: server.PlexServer,
             plexItemId: int,
