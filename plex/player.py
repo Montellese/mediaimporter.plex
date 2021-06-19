@@ -396,11 +396,11 @@ class Player(xbmc.Player):
         if state:
             self._state['state'] = state
 
-        if playbackTime is not None:
+        if playbackTime:
             self._state['playbackTime'] = int(playbackTime)
 
         # Send update to PMS and update last report timestamp
-        if self._state.get('playbackTime') is not None and self._state.get('state'):
+        if self._state.get('playbackTime') and self._state.get('state'):
             self._state['lastreport'] = time.time()
             self._item.updateTimeline(
                 self._state['playbackTime'],

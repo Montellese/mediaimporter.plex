@@ -144,7 +144,7 @@ class ProviderObserver:
         while True:
             try:
                 message = self._websocket.recv()
-                if message is None:
+                if not message:
                     break
 
                 messageObj = json.loads(message)

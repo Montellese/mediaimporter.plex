@@ -180,7 +180,7 @@ class Api:
         """
         # ATTENTION: don't change this to "if not plexItem" because folders (e.g. collections) with no
         #            content are considered faulty
-        if plexItem is None:
+        if not plexItem:
             raise ValueError('invalid plexItem')
         if not libraryType:
             raise ValueError('invalid libraryType')
@@ -472,8 +472,8 @@ class Api:
     def toFileItem(
             plexServer: server.PlexServer,
             plexItem: video.Video,
-            mediaType: str = "",
-            plexLibType: str = "",
+            mediaType: str = None,
+            plexLibType: str = None,
             allowDirectPlay: bool = False
     ) -> ListItem:
         """Validate, populate, and convert the provided plexItem into a Kodi GUI ListItem object
@@ -502,7 +502,7 @@ class Api:
             plexLibType = mappedMediaType['libtype']
 
         # make sure the item matches the media type
-        if plexLibType is not None and not Api.validatePlexLibraryItemType(plexItem, plexLibType):
+        if plexLibType and not Api.validatePlexLibraryItemType(plexItem, plexLibType):
             log(f"cannot import {mediaType} item from invalid Plex library item: {plexItem}", xbmc.LOGERROR)
             return None
 
