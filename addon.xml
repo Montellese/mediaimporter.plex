@@ -17,6 +17,10 @@
         <menu id="kodi.core.main">
             <menu>
                 <label>Plex Media Importer</label>
+                <item library="context.py" args="?action=sync">
+                    <label>32101</label>
+                    <visible>ListItem.IsImported + ListItem.IsEnabled + String.IsEqual(ListItem.MediaImporter,mediaimporter.plex)</visible>
+                </item>
                 <item library="context.py" args="?action=refresh">
                     <label>32100</label>
                     <visible>ListItem.IsImported + ListItem.IsEnabled + String.IsEqual(ListItem.MediaImporter,mediaimporter.plex)</visible>

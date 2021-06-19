@@ -218,3 +218,8 @@ msgstr ""
 msgctxt "#32100"
 msgid "Refresh metadata"
 msgstr ""
+
+#. Label of the synchronise context menu item
+msgctxt "#32101"
+msgid "Synchronise"
+msgstr ""
