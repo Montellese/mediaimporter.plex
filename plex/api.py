@@ -501,22 +501,44 @@ class Api:
         return Api.toFileItem(plexServer, plexItem, allowDirectPlay=allowDirectPlay)
 
     @staticmethod
+    def canPlay(plexItem: video.Video) -> bool:
+        if not plexItem:
+            raise ValueError('invalid plexItem')
+
+        if isinstance(plexItem, (video.Movie, video.Episode)) and plexItem.media:
+            return True
+
+        return False
+
+    @staticmethod
     def getDirectPlayUrlFromPlexItem(plexItem: video.Video) -> str:
         if not plexItem:
             raise ValueError('invalid plexItem')
 
-        if not isinstance(plexItem, (video.Movie, video.Episode)) or not plexItem.media:
+        if not Api.canPlay(plexItem):
             return None
 
-        for mediaStream in plexItem.media:
-            if not mediaStream:
+        for media in plexItem.media:
+            if not media:
                 continue
 
-            for mediaPart in mediaStream.parts:
-                # try to get a direct play URL
-                directPlayUrl = Api.getDirectPlayUrl(mediaPart)
-                if directPlayUrl:
-                    return directPlayUrl
+            # try to get a direct play URL
+            directPlayUrl = Api.getDirectPlayUrlFromMedia(media)
+            if directPlayUrl:
+                return directPlayUrl
+
+        return None
+
+    @staticmethod
+    def getDirectPlayUrlFromMedia(media: media.Media) -> str:
+        if not media:
+            raise ValueError('invalid media')
+
+        for mediaPart in media.parts:
+            # try to get a direct play URL
+            directPlayUrl = Api.getDirectPlayUrl(mediaPart)
+            if directPlayUrl:
+                return directPlayUrl
 
         return None
 
@@ -546,17 +568,27 @@ class Api:
         if not plexItem:
             raise ValueError('invalid plexItem')
 
-        if not isinstance(plexItem, (video.Movie, video.Episode)) or not plexItem.media:
+        if not Api.canPlay(plexItem):
             return None
 
-        for mediaStream in plexItem.media:
-            if not mediaStream:
+        for media in plexItem.media:
+            if not media:
                 continue
 
-            for mediaPart in mediaStream.parts:
-                return Api.getStreamUrl(mediaPart, plexServer)
+            return Api.getStreamUrlFromMedia(media, plexServer)
 
         return None
+
+    @staticmethod
+    def getStreamUrlFromMedia(media: media.Media, plexServer: server.PlexServer) -> str:
+        if not media:
+            raise ValueError('invalid media')
+
+        for mediaPart in media.parts:
+            return Api.getStreamUrl(mediaPart, plexServer)
+
+        return None
+
 
     @staticmethod
     def getStreamUrl(mediaPart: media.MediaPart, plexServer: server.PlexServer) -> str:

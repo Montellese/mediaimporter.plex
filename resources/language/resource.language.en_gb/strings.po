@@ -240,6 +240,23 @@ msgid "Stream"
 msgstr ""
 
 #. Label of the play context menu item for Play Version
-msgctxt "#32104"
+msgctxt "#32105"
 msgid "Play Version ..."
+msgstr ""
+
+#. Label of the Play Version context menu item
+msgctxt "#32106"
+msgid "{bitrate}, {resolution}"
+msgstr ""
+
+msgctxt "#32107"
+msgid "{bitrate:.1f} Kbps"
+msgstr ""
+
+msgctxt "#32108"
+msgid "{bitrate:.1f} Mbps"
+msgstr ""
+
+msgctxt "#32109"
+msgid "{bitrate:.1f} Gbps"
 msgstr ""

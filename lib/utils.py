@@ -178,3 +178,19 @@ def getAddonPath():
         pass
 
     return addonPath
+
+def bitrate2str(bitrate: float) -> str:
+    if bitrate is None:
+        raise ValueError('invalid bitrate')
+
+    return _bitrate2str(bitrate, 32107, 2)
+
+def _bitrate2str(bitrate: float, string_id: int, iterations: int) -> str:
+    if iterations <= 0 or bitrate < 1000.0:
+        return localize2str(string_id, bitrate=bitrate)
+
+    bitrate = bitrate / 1000.0
+    string_id = string_id + 1
+    iterations = iterations -1
+
+    return _bitrate2str(bitrate, string_id, iterations)

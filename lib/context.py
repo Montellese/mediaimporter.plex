@@ -126,6 +126,44 @@ def play(item, itemId, mediaProvider):
         playChoices.append(localize(32104))
         playChoicesUrl.append(directStreamUrl)
 
+    # check if the item has multiple versions
+    multipleVersions = []
+    if len(plexItem.media) > 1:
+        for mediaStream in plexItem.media:
+            url = None
+            if allowDirectPlay:
+                directPlayUrl = Api.getDirectPlayUrlFromMedia(mediaStream)
+                if directPlayUrl:
+                    url = directPlayUrl
+
+            if not url:
+                url = Api.getStreamUrlFromMedia(mediaStream, server.PlexServer())
+
+            # get the display title of the first videostream
+            for mediaPart in mediaStream.parts:
+                # get all video streams
+                videoStreams = (stream for stream in mediaPart.streams if isinstance(stream, media.VideoStream))
+                # extract the first non-empty display resolution
+                displayResolution = next(
+                    (
+                        stream.displayTitle or stream.extendedDisplayTitle
+                        for stream in videoStreams
+                        if stream.displayTitle or stream.extendedDisplayTitle
+                    ),
+                    None)
+                if displayResolution:
+                    break
+
+            # fall back to the basic video resolution of the stream
+            if not displayResolution:
+                displayResolution = mediaStream.videoResolution
+
+            multipleVersions.append((url, mediaStream.bitrate, displayResolution))
+
+    if len(multipleVersions) > 1:
+        playChoices.append(localize(32105))
+        playChoicesUrl.append(PLAY_MULTIPLE_VERSIONS_KEY)
+
     # if there are no options something went wrong
     if not playChoices:
         contextLog(
