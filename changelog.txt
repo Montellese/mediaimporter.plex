@@ -5,6 +5,7 @@
 - support skipping detected episode intros (closes #24)
 - add context menu integration with the option to refresh the metadata on the PMS
 - add synchronize entry to context menu to synchronize single items
+- add play entry to context menu to choose how to play an item
 
 [B]Version 0.0.9[/B]
 - replace custom PMS network discovery with plexapi.gdm.GDM

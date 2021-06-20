@@ -223,3 +223,18 @@ msgstr ""
 msgctxt "#32101"
 msgid "Synchronise"
 msgstr ""
+
+#. Label of the play version context menu item
+msgctxt "#32102"
+msgid "Play ..."
+msgstr ""
+
+#. Label of the play context menu item for Direct Play
+msgctxt "#32103"
+msgid "Direct Play"
+msgstr ""
+
+#. Label of the play context menu item for Stream
+msgctxt "#32104"
+msgid "Stream"
+msgstr ""

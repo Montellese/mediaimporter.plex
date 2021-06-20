@@ -33,7 +33,9 @@ if __name__ == '__main__':
 
     action = None
     action_option = options[OPTION_ACTION][0]
-    if action_option == 'sync':
+    if action_option == 'play':
+        action = context.ContextAction.Play
+    elif action_option == 'sync':
         action = context.ContextAction.Synchronize
     elif action_option == 'refresh':
         action = context.ContextAction.RefreshMetadata

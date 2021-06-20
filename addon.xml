@@ -21,6 +21,10 @@
                     <label>32101</label>
                     <visible>ListItem.IsImported + ListItem.IsEnabled + String.IsEqual(ListItem.MediaImporter,mediaimporter.plex)</visible>
                 </item>
+                <item library="context.py" args="?action=play">
+                    <label>32102</label>
+                    <visible>!ListItem.IsFolder + ListItem.IsImported + ListItem.IsEnabled + String.IsEqual(ListItem.MediaImporter,mediaimporter.plex)</visible>
+                </item>
                 <item library="context.py" args="?action=refresh">
                     <label>32100</label>
                     <visible>ListItem.IsImported + ListItem.IsEnabled + String.IsEqual(ListItem.MediaImporter,mediaimporter.plex)</visible>

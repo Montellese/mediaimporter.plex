@@ -10,20 +10,22 @@ import sys
 
 import xbmc  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
-from xbmcgui import ListItem  # pylint: disable=import-error
+from xbmcgui import Dialog, ListItem  # pylint: disable=import-error
 
-from lib.utils import log, mediaProvider2str
+from lib.utils import localize, log, mediaProvider2str
 from plex.api import Api
 from plex.constants import SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY
 from plex.server import Server
 
 import plexapi
+from plexapi import collection
 from plexapi import video
 
 
 class ContextAction:
-    Synchronize = 0
-    RefreshMetadata = 1
+    Play = 0
+    Synchronize = 1
+    RefreshMetadata = 2
 
 
 def contextLog(message: str, level: int = xbmc.LOGINFO, entry: str = None):
@@ -67,6 +69,80 @@ def synchronizeItem(
         return None
 
     return fullItem
+
+
+def play(item, itemId, mediaProvider):
+    if item.isFolder():
+        contextLog(f"cannot play folder item {listItem2str(item, itemId)}", xbmc.LOGERROR, entry='play')
+        return
+
+    # create a Plex server instance
+    server = Server(mediaProvider)
+    if not server.Authenticate():
+        contextLog(
+            f"failed to connect to Plex Media Server for {mediaProvider2str(mediaProvider)}",
+            xbmc.LOGWARNING, entry='sync')
+        return
+
+    plexItemClass = Api.getPlexMediaClassFromListItem(item)
+
+    # cannot play folders
+    if plexItemClass in (collection.Collection, video.Show, video.Season):
+        contextLog(f"cannot play folder item {listItem2str(item, itemId)}", xbmc.LOGERROR, entry='play')
+        return
+
+    # get the Plex item with all its details
+    plexItem = Api.getPlexItemDetails(server.PlexServer(), itemId, plexItemClass=plexItemClass)
+    if not plexItem:
+        contextLog(
+            f"failed to determine Plex item for {listItem2str(item, itemId)} from {mediaProvider2str(mediaProvider)}",
+            xbmc.LOGWARNING, entry='refresh')
+        return
+
+    playChoices = []
+    playChoicesUrl = []
+
+    # determine whether Direct Play is allowed
+    mediaProviderSettings = mediaProvider.getSettings()
+    allowDirectPlay = mediaProviderSettings.getBool(SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY)
+
+    # check if the item supports Direct Play
+    if allowDirectPlay:
+        directPlayUrl = Api.getDirectPlayUrlFromPlexItem(plexItem)
+        if directPlayUrl:
+            playChoices.append(localize(32103))
+            playChoicesUrl.append(directPlayUrl)
+
+    # check if the item supports streaming
+    directStreamUrl = Api.getStreamUrlFromPlexItem(plexItem, server.PlexServer())
+    if directStreamUrl:
+        playChoices.append(localize(32104))
+        playChoicesUrl.append(directStreamUrl)
+
+    # if there are no options something went wrong
+    if not playChoices:
+        contextLog(
+            f"cannot play {listItem2str(item, itemId)} from {mediaProvider2str(mediaProvider)}",
+            xbmc.LOGERROR, entry='play')
+        return
+
+    # ask the user how to play
+    playChoice = Dialog().contextmenu(playChoices)
+    if playChoice < 0 or playChoice >= len(playChoices):
+        return
+
+    playUrl = playChoicesUrl[playChoice]
+
+    # play the item
+    contextLog(
+        (
+            f'playing {listItem2str(item, itemId)} using "{playChoices[playChoice]}" ({playUrl}) '
+            f'from {mediaProvider2str(mediaProvider)}'
+        ),
+        entry='play')
+    # overwrite the dynamic path of the ListItem
+    item.setDynamicPath(playUrl)
+    xbmc.Player().play(playUrl, item)
 
 
 def synchronize(item: ListItem, itemId: int, mediaProvider):
@@ -162,7 +238,9 @@ def run(action):
             xbmc.LOGERROR)
         return
 
-    if action == ContextAction.Synchronize:
+    if action == ContextAction.Play:
+        play(item, itemId, mediaProvider)
+    elif action == ContextAction.Synchronize:
         synchronize(item, itemId, mediaProvider)
     elif action == ContextAction.RefreshMetadata:
         refreshMetadata(item, itemId, mediaProvider)
