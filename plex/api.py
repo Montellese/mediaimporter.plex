@@ -16,7 +16,7 @@ import xbmcvfs  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 
 import plexapi
-from plexapi import collection, server, video
+from plexapi import collection, media, server, video
 
 from plex.constants import *
 
@@ -501,6 +501,73 @@ class Api:
         return Api.toFileItem(plexServer, plexItem, allowDirectPlay=allowDirectPlay)
 
     @staticmethod
+    def getDirectPlayUrlFromPlexItem(plexItem: video.Video) -> str:
+        if not plexItem:
+            raise ValueError('invalid plexItem')
+
+        if not isinstance(plexItem, (video.Movie, video.Episode)) or not plexItem.media:
+            return None
+
+        for mediaStream in plexItem.media:
+            if not mediaStream:
+                continue
+
+            for mediaPart in mediaStream.parts:
+                # try to get a direct play URL
+                directPlayUrl = Api.getDirectPlayUrl(mediaPart)
+                if directPlayUrl:
+                    return directPlayUrl
+
+        return None
+
+    @staticmethod
+    def getDirectPlayUrl(mediaPart: media.MediaPart) -> str:
+        if not mediaPart:
+            raise ValueError('invalid mediaPart')
+
+        # extract the absolute / actual path and the stream URL from the given MediaPart
+        path = mediaPart.file
+
+        # if we can access the direct path we can use Direct Play
+        if xbmcvfs.exists(path):
+            return path
+
+        # perform replacement in file path if configured
+        mappedPath = Api._mapPath(path)
+
+        # confirm file is accessible and store item path
+        if mappedPath and xbmcvfs.exists(mappedPath):
+            return mappedPath
+
+        return None
+
+    @staticmethod
+    def getStreamUrlFromPlexItem(plexItem: video.Video, plexServer: server.PlexServer) -> str:
+        if not plexItem:
+            raise ValueError('invalid plexItem')
+
+        if not isinstance(plexItem, (video.Movie, video.Episode)) or not plexItem.media:
+            return None
+
+        for mediaStream in plexItem.media:
+            if not mediaStream:
+                continue
+
+            for mediaPart in mediaStream.parts:
+                return Api.getStreamUrl(mediaPart, plexServer)
+
+        return None
+
+    @staticmethod
+    def getStreamUrl(mediaPart: media.MediaPart, plexServer: server.PlexServer) -> str:
+        if not mediaPart:
+            raise ValueError('invalid mediaPart')
+        if not plexServer:
+            raise ValueError('invalid plexServer')
+
+        return plexServer.url(mediaPart.key, includeToken=True)
+
+    @staticmethod
     def toFileItem(
             plexServer: server.PlexServer,
             plexItem: video.Video,
@@ -732,12 +799,12 @@ class Api:
             videoInfoTag.setResumePoint(resumeTime, duration)
 
         # handle stream details
-        mediaPart = None
+        path = None
         for mediaStream in media:
             for part in mediaStream.parts:
                 # pick the first MediaPart with a valid file and stream URL
-                if not mediaPart and part.file and part.key:
-                    mediaPart = part
+                if not path and part.file and part.key:
+                    path = part.file
 
                 for videoStream in part.videoStreams():
                     videoInfoTag.addVideoStream(xbmc.VideoStreamDetail(
@@ -760,28 +827,21 @@ class Api:
                         language=subtitleStream.language or f"[{index}]"
                     ))
 
-        path = None
-        if mediaPart:
-            # extract the absolute / actual path and the stream URL from the selected MediaPart
-            path = mediaPart.file  # path to file on disk
-
-            # determine if directPlay is enabled and possible
-            if allowDirectPlay:
-                # perform replacement in file path if configured
-                filePath = Api._mapPath(mediaPart.file)
-
-                # confirm file is accessible and store item path
-                if filePath and xbmcvfs.exists(filePath):
-                    item.setPath(filePath)
-
-            # Set streaming URL if allowDirectPlay path inaccessible or wasn't enabled
-            if not item.getPath():
-                item.setPath(plexServer.url(mediaPart.key, includeToken=True))
-        elif isFolder:
+        if isFolder:
             # for folders use locations for the path
             if locations:
                 path = locations[0]
             item.setPath(plexServer.url(plexItem.key, includeToken=True))
+        else:
+            # determine if directPlay is enabled and possible
+            if allowDirectPlay:
+                directPlayUrl = Api.getDirectPlayUrlFromPlexItem(plexItem)
+                if directPlayUrl:
+                    item.setPath(directPlayUrl)
+
+            # otherwise determine the stream URL
+            if not item.getPath():
+                item.setPath(Api.getStreamUrlFromPlexItem(plexItem, plexServer))
 
         if path:
             videoInfoTag.setPath(path)
