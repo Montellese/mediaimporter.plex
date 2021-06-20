@@ -12,14 +12,16 @@ import xbmc  # pylint: disable=import-error
 import xbmcmediaimport  # pylint: disable=import-error
 from xbmcgui import Dialog, ListItem  # pylint: disable=import-error
 
-from lib.utils import localize, log, mediaProvider2str
+from lib.utils import bitrate2str, localize, log, mediaProvider2str
 from plex.api import Api
 from plex.constants import SETTINGS_PROVIDER_PLAYBACK_ALLOW_DIRECT_PLAY
 from plex.server import Server
 
 import plexapi
-from plexapi import collection
-from plexapi import video
+from plexapi import collection, media, video
+
+
+PLAY_MULTIPLE_VERSIONS_KEY = 'mediaimporter.plex/multiple_versions'
 
 
 class ContextAction:
@@ -99,6 +101,11 @@ def play(item, itemId, mediaProvider):
             xbmc.LOGWARNING, entry='refresh')
         return
 
+    # cannot play folders
+    if not Api.canPlay(plexItem):
+        contextLog(f"cannot play item {listItem2str(item, itemId)}", xbmc.LOGERROR, entry='play')
+        return
+
     playChoices = []
     playChoicesUrl = []
 
@@ -132,6 +139,26 @@ def play(item, itemId, mediaProvider):
         return
 
     playUrl = playChoicesUrl[playChoice]
+
+    # check if the user chose to choose which version to play
+    if playUrl == PLAY_MULTIPLE_VERSIONS_KEY:
+        playChoices.clear()
+        playChoicesUrl.clear()
+
+        # sort the available versions by bitrate (second field)
+        multipleVersions.sort(key=lambda version: version[1], reverse=True)
+
+        for version in multipleVersions:
+            playChoices.append(
+                localize(32106, bitrate=bitrate2str(version[1]), resolution=version[2]))
+            playChoicesUrl.append(version[0])
+
+        # ask the user which version to play
+        playChoice = Dialog().contextmenu(playChoices)
+        if playChoice < 0 or playChoice >= len(playChoices):
+            return
+
+        playUrl = playChoicesUrl[playChoice]
 
     # play the item
     contextLog(

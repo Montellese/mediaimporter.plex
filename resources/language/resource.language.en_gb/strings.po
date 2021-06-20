@@ -238,3 +238,8 @@ msgstr ""
 msgctxt "#32104"
 msgid "Stream"
 msgstr ""
+
+#. Label of the play context menu item for Play Version
+msgctxt "#32104"
+msgid "Play Version ..."
+msgstr ""
