@@ -128,6 +128,12 @@ class GDM:
                                              'from': host})
                 except socket.timeout:
                     break
+                except Exception as e:
+                    # TODO(Montellese): remove workaround for Kodi Python 3 issue
+                    if e.args and e.args[0] == 'timed out':
+                        break
+
+                    raise e
         finally:
             sock.close()
 
