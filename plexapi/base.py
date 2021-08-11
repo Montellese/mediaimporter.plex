@@ -440,8 +440,7 @@ class PlexPartialObject(PlexObject):
         'includeRelated': 1,
         'includeRelatedCount': 1,
         'includeReviews': 1,
-        'includeStations': 1,
-        'skipRefresh': 0,
+        'includeStations': 1
     }
 
     def __eq__(self, other):

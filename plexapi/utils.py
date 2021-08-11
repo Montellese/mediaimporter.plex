@@ -20,14 +20,6 @@ try:
 except ImportError:
     tqdm = None
 
-# mediaimporter.plex patch: fix for datatetime.strptime returns None
-class proxydt(datetime):
-    @staticmethod
-    def strptime(date_string, format):
-        return datetime(*(time.strptime(date_string, format)[0:6]))
-
-datetime = proxydt
-
 log = logging.getLogger('plexapi')
 
 # Search Types - Plex uses these to filter specific media types when searching.
@@ -156,6 +148,7 @@ def searchType(libtype):
         Parameters:
             libtype (str): LibType to lookup (movie, show, season, episode, artist, album, track,
                                               collection)
+
         Raises:
             :exc:`~plexapi.exceptions.NotFound`: Unknown libtype
     """
@@ -164,6 +157,24 @@ def searchType(libtype):
         return libtype
     if SEARCHTYPES.get(libtype) is not None:
         return SEARCHTYPES[libtype]
+    raise NotFound('Unknown libtype: %s' % libtype)
+
+
+def reverseSearchType(libtype):
+    """ Returns the string value of the library type.
+
+        Parameters:
+            libtype (int): Integer value of the library type.
+
+        Raises:
+            :exc:`~plexapi.exceptions.NotFound`: Unknown libtype
+    """
+    if libtype in SEARCHTYPES:
+        return libtype
+    libtype = int(libtype)
+    for k, v in SEARCHTYPES.items():
+        if libtype == v:
+            return k
     raise NotFound('Unknown libtype: %s' % libtype)
 
 
