@@ -13,42 +13,53 @@ from xbmcgui import (  # pylint: disable=import-error
     WindowXMLDialog
 )
 
-from lib.utils import getAddonPath, log
+from lib.utils import getAddonPath, localize, log
 
-class SkipIntroDialog(WindowXMLDialog):
-    CONTROL_ID_SKIP_INTRO = 3002  # TODO(Montellese)
+class SkipDialog(WindowXMLDialog):
+    CONTROL_ID_SKIP = 3002  # TODO(Montellese)
 
     @staticmethod
-    def Create():
-        return SkipIntroDialog(
-            "DialogSkipIntro.xml",
+    def Create(label):
+        if not label:
+            raise ValueError('invalid label')
+
+        return SkipDialog(
+            "DialogSkip.xml",
             getAddonPath(),
             "default",
-            "720p"
+            "720p",
+            label=label
             )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, label, **kwargs):
+        if not label:
+            raise ValueError('invalid label')
+
         super(WindowXMLDialog, self).__init__(*args, **kwargs)
+
+        if not isinstance(label, str):
+            label = localize(label)
+        self.setProperty('skiplabel', label)
 
         self._isOpen = False
         self._skipConfirmed = False
 
     def show(self):
         if not self.isOpen():
-            log('showing skip intro dialog')
+            log('showing skip dialog')
             self._isOpen = True
             self._skipConfirmed = False
             WindowXMLDialog.show(self)
 
     def close(self):
         if self.isOpen():
-            log('closing skip intro dialog')
+            log('closing skip dialog')
             self._isOpen = False
             WindowXMLDialog.close(self)
 
     def onClick(self, controlId):  # pylint: disable=invalid-name
-        if controlId == SkipIntroDialog.CONTROL_ID_SKIP_INTRO:
-            log('skipping intro activated')
+        if controlId == SkipDialog.CONTROL_ID_SKIP:
+            log('skipping activated')
             self._skipConfirmed = True
             self.close()
 
@@ -60,5 +71,5 @@ class SkipIntroDialog(WindowXMLDialog):
     def isOpen(self) -> bool:
         return self._isOpen
 
-    def skipIntro(self) -> bool:
+    def skip(self) -> bool:
         return self._skipConfirmed

@@ -21,13 +21,13 @@ from plex.constants import (
     PLEX_PLAYER_PAUSED,
     PLEX_PLAYER_STOPPED,
     SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO,
-    SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_ASK,
-    SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_ALWAYS,
-    SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_NEVER,
+    SETTINGS_IMPORT_PLAYBACK_SKIP_ASK,
+    SETTINGS_IMPORT_PLAYBACK_SKIP_ALWAYS,
+    SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER,
     SETTINGS_PROVIDER_PLAYBACK_ENABLE_EXTERNAL_SUBTITLES
 )
 from plex.server import Server
-from plex.skip_intro_dialog import SkipIntroDialog
+from plex.skip_dialog import SkipDialog
 
 from lib.utils import log, mediaProvider2str, milliToSeconds, toMilliseconds, localize
 
@@ -50,8 +50,8 @@ class Player(xbmc.Player):
         self._state = {'playbacktime': 0, 'state': None, 'lastreport': 0}
         self._duration = None
         self._introMarker = None
-        self._skipIntroSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_NEVER
-        self._skipIntroDialog = None
+        self._skipIntroSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER
+        self._skipDialog = None
 
         self._file = None
         self._item = None
@@ -308,7 +308,7 @@ class Player(xbmc.Player):
 
         # handle skipping intros
         self._skipIntroSetting = importSettings.getString(SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO)
-        if self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_NEVER:
+        if self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER:
             log(
                 (
                     f"ignoring available intro markers for {self._item.title} ({self._file}) "
@@ -349,16 +349,16 @@ class Player(xbmc.Player):
         # nothing to do if the current playback time is outside of the intro marker
         if markerStart > playbackTime or markerEnd < playbackTime:
             # close the skip intro dialog if it is still open
-            if self._skipIntroDialog:
-                self._skipIntroDialog.close()
-                self._skipIntroDialog = None
+            if self._skipDialog:
+                self._skipDialog.close()
+                self._skipDialog = None
             return
 
         skipIntro = False
-        if self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_ALWAYS:
+        if self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_ALWAYS:
             skipIntro = True
-        elif self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_ASK:
-            if not self._skipIntroDialog:
+        elif self._skipIntroSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_ASK:
+            if not self._skipDialog:
                 log(
                     (
                         f"asking to skip intro starting at {markerStart}ms to {markerEnd}ms for "
@@ -366,11 +366,11 @@ class Player(xbmc.Player):
                     )
                 )
                 # create and open the skip intro dialog
-                self._skipIntroDialog = SkipIntroDialog.Create()
-                self._skipIntroDialog.show()
+                self._skipDialog = SkipDialog.Create(32031)
+                self._skipDialog.show()
 
             # check if skipping the intro has been confirmed
-            if self._skipIntroDialog.skipIntro():
+            if self._skipDialog.skip():
                 skipIntro = True
 
         if skipIntro:
@@ -423,8 +423,8 @@ class Player(xbmc.Player):
         self._itemId = None
         self._mediaProvider = None
         self._mediaImport = None
-        self._skipIntroDialog = None
-        self._skipIntroSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO_NEVER
+        self._skipDialog = None
+        self._skipIntroSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER
         self._introMarker = None
         self._duration = None
         # Player last known state
