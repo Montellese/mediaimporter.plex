@@ -21,6 +21,7 @@ from plex.constants import (
     PLEX_PLAYER_PAUSED,
     PLEX_PLAYER_STOPPED,
     SETTINGS_IMPORT_PLAYBACK_SKIP_INTRO,
+    SETTINGS_IMPORT_PLAYBACK_SKIP_ADS,
     SETTINGS_IMPORT_PLAYBACK_SKIP_ASK,
     SETTINGS_IMPORT_PLAYBACK_SKIP_ALWAYS,
     SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER,
@@ -50,7 +51,9 @@ class Player(xbmc.Player):
         self._state = {'playbacktime': 0, 'state': None, 'lastreport': 0}
         self._duration = None
         self._introMarker = None
+        self._adMarkers = []
         self._skipIntroSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER
+        self._skipAdsSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER
         self._skipDialog = None
 
         self._file = None
@@ -273,6 +276,9 @@ class Player(xbmc.Player):
         # try to get an intro marker
         self._getIntroMarker(importSettings)
 
+        # try to get ad markers
+        self._getAdMarkers(importSettings)
+
     def _addExternalSubtitles(self, plexServer: PlexServer):
         """Add external subtitles to the player
 
@@ -335,8 +341,32 @@ class Player(xbmc.Player):
             f"playing from {mediaProvider2str(self._mediaProvider)}"
         ))
 
+    def _getAdMarkers(self, importSettings: Settings):
+        if not isinstance(self._item, Episode) or not self._item.hasCommercialMarker:
+            return
+
+        # handle skipping ads
+        self._skipAdsSetting = importSettings.getString(SETTINGS_IMPORT_PLAYBACK_SKIP_ADS)
+        if self._skipAdsSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER:
+            log(
+                (
+                    f"ignoring available ad markers for {self._item.title} ({self._file}) "
+                    f"playing from {mediaProvider2str(self._mediaProvider)}"
+                )
+            )
+            return
+
+        # find all ad markers
+        self._adMarkers = [marker for marker in self._item.markers if marker.type == 'commercial']
+        log((
+            f"found {len(self._adMarkers)} ad markers for {self._item.title} ({self._file}) "
+            f"playing from {mediaProvider2str(self._mediaProvider)}"
+        ))
+
     def _processPlayback(self):
-        self._processIntroMarker(playbackTime=self._getPlayingTime())
+        playbackTime = self._getPlayingTime()
+        self._processIntroMarker(playbackTime=playbackTime)
+        self._processAdMarkers(playbackTime=playbackTime)
 
     def _processIntroMarker(self, playbackTime: float):
         # nothing to do if there are no intro markers
@@ -375,6 +405,49 @@ class Player(xbmc.Player):
 
         if skipIntro:
             log(f"skipping intro starting at {markerStart}ms to {markerEnd}ms for {self._item.title} ({self._file})")
+            self.seekTime(milliToSeconds(markerEnd))
+
+    def _processAdMarkers(self, playbackTime: float):
+        # nothing to do if there are no ad markers
+        if not self._adMarkers:
+            return False
+
+        adMarker = [marker for marker in self._adMarkers if marker.start <= playbackTime and marker.end > playbackTime]
+
+        # nothing to do if the current playback time is outside of all ad markers
+        if not adMarker:
+            # close the skip dialog if it is still open
+            if self._skipDialog:
+                self._skipDialog.close()
+                self._skipDialog = None
+            return False
+
+        # get the actual ad marker
+        adMarker = adMarker[0]
+        markerStart = adMarker.start
+        markerEnd = adMarker.end
+
+        skipAd = False
+        if self._skipAdsSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_ALWAYS:
+            skipAd = True
+        elif self._skipAdsSetting == SETTINGS_IMPORT_PLAYBACK_SKIP_ASK:
+            if not self._skipDialog:
+                log(
+                    (
+                        f"asking to skip ad starting at {markerStart}ms to {markerEnd}ms for "
+                        f"{self._item.title} ({self._file})"
+                    )
+                )
+                # create and open the skip dialog
+                self._skipDialog = SkipDialog.Create(32036)
+                self._skipDialog.show()
+
+            # check if skipping the ad has been confirmed
+            if self._skipDialog.skip():
+                skipAd = True
+
+        if skipAd:
+            log(f"skipping ad starting at {markerStart}ms to {markerEnd}ms for {self._item.title} ({self._file})")
             self.seekTime(milliToSeconds(markerEnd))
 
     def _syncPlaybackState(self, state: str = None, playbackTime: float = None):
@@ -425,7 +498,9 @@ class Player(xbmc.Player):
         self._mediaImport = None
         self._skipDialog = None
         self._skipIntroSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER
+        self._skipAdsSetting = SETTINGS_IMPORT_PLAYBACK_SKIP_NEVER
         self._introMarker = None
+        self._adMarkers = []
         self._duration = None
         # Player last known state
         self._state = {'playbackTime': 0, 'state': None, 'lastreport': 0}

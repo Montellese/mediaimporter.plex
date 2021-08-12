@@ -10,6 +10,7 @@
 - use multiple threads to convert media items retrieved from PMS into ListItems
 - add retry logic if retrieving media items from PMS (temporarily) fails
 - bump plexapi from 4.6.1 to 4.7.0
+- support skipping detected ads / commercials in episodes
 
 [B]Version 0.0.9[/B]
 - replace custom PMS network discovery with plexapi.gdm.GDM

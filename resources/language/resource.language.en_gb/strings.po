@@ -144,6 +144,14 @@ msgctxt "#32034"
 msgid "Number of seconds between retries"
 msgstr ""
 
+msgctxt "#32035"
+msgid "Skip Ads (requires Plex Pass)"
+msgstr ""
+
+msgctxt "#32036"
+msgid "Skip Ad"
+msgstr ""
+
 #. Titel of the dialog to select the authentication method
 msgctxt "#32050"
 msgid "Plex Media Server authentication method"
