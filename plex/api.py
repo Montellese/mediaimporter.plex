@@ -889,7 +889,10 @@ class Api:
             poster = plexServer.url(plexItem.thumb, includeToken=True)
 
         if poster:
-            artwork['poster'] = poster
+            if mediaType in (xbmcmediaimport.MediaTypeEpisode, xbmcmediaimport.MediaTypeMusicVideo):
+                artwork['thumb'] = poster
+            else:
+                artwork['poster'] = poster
         if fanart:
             artwork['fanart'] = fanart
         if artwork:
